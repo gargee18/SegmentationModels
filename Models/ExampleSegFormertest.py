@@ -1,3 +1,5 @@
+# Trial of inference of a transformer model from hugging face
+
 import os
 import json
 from PIL import Image

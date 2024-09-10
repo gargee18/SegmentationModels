@@ -7,8 +7,8 @@ from diffusers import UNet2DModel
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 import matplotlib.pyplot as plt
-from new_seg import SegmentationDataset  # Import the class from the class definition file
-from ExampleCustomUnet import UNet  # Import the class from the class definition file
+from Older.new_seg import SegmentationDataset  # Import the class from the class definition file
+from SegmentationModels.Models.CustomUnet import UNet  # Import the class from the class definition file
 
 
 def show_img(a):

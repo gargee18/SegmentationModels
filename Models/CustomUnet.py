@@ -30,7 +30,7 @@ class CustomUnet(nn.Module):
             nn.ReLU(),
             nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         )
-        self.final_layer = nn.Conv2d(3, 6, kernel_size=1)  # 6 classes
+        self.final_layer = nn.Conv2d(3, 8, kernel_size=1)  # 6 classes
 
     def forward(self, x):
         x1 = self.encoder(x)

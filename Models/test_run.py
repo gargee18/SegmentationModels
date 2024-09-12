@@ -16,8 +16,8 @@ import torch.nn.functional as F
 
 
 #Define annotations and source image, and create the dataloader
-json_file_path = '/home/phukon/Desktop/Annotation_VIA/Train/jsons/Annotations_16_CEPs_XR_json.json'
-image_dir = '/home/phukon/Desktop/Annotation_VIA/Train/training_imgs_16/'
+json_file_path = '/home/phukon/Desktop/Model_Fitting/annotations/train_annotations.json'
+image_dir = '/home/phukon/Desktop/Model_Fitting/images/train_set/'
 dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir)
 dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
 
@@ -83,31 +83,3 @@ for images, masks in dataloader:
     plt.imshow(outputs[0,5].detach().cpu().numpy())
     plt.show()
 
-
-
-
-
-# # Training loop
-# for epoch in range(num_epochs):
-#     print(epoch)
-#     model.train()  # Set model to training mode
-#     running_loss = 0.0
-
-#     for images, masks in dataloader:
-#         images = images.to(device)
-#         masks = masks.squeeze()
-#         masks=torch.argmax(masks,dim=1)
-#         masks=masks.to(device) 
-
-#         # Zero the gradients
-#         optimizer.zero_grad()
-#         outputs = model(images)  # Get the output from the model
-#         #print("Toto outputs "+str(np.shape(outputs)))
-#         #print("Toto masks "+str(np.shape(masks)))
-#         loss = criterion(outputs, masks)
-#         loss.backward()
-#         optimizer.step()        # Update the weights
-#         running_loss += loss.item()
-
-#     print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {running_loss / len(dataloader):.4f}")
-# # torch.save(model.state_dict(), "unet_segmentation_model.pth")

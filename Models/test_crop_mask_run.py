@@ -32,7 +32,7 @@ transform_mask = transforms.Compose([
 
 #Define annotations and source image, and create the dataloader
 json_file_path = '/home/phukon/Desktop/Annotation_VIA/Train/jsons/via_project_2Sep2024_16h21m_kickstart_json.json'
-image_dir = '/home/phukon/Desktop/Annotation_VIA/Train/imgs_kickstart/'
+image_dir = '/home/phukon/Desktop/Annotation_VIA/Train/training_imgs_16/'
 dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, transform_mask=transform_mask, transform_image=transform_image)
 dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
 

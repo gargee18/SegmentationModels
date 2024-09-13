@@ -9,9 +9,11 @@ from PIL import Image, ImageDraw
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
+import torch
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def gargee_function_for_making_the_crop_after_because_you_know_dude_were_making_prototypes_that_s_life(image_filename):
+def extract_region_by_coords(image_filename):
     coordinates = {
         'CEP_313B_2024_sl_598.tif': (178, 132),
         'CEP_318_2022_sl_719.tif': (152, 119),
@@ -42,16 +44,13 @@ class SegmentationDataset(Dataset):
         # Load the JSON file
         if(transform_mask==None):
             transform_mask=transforms.Compose([
-            # transforms.Resize((256, 256),interpolation=InterpolationMode.NEAREST ),
             transforms.ToTensor(),
             ])
             transform_image = transforms.Compose([
-            # transforms.Resize((256, 256)),
             transforms.ToTensor(),
             ])
         with open(json_file, 'r') as f:    # r for read
             self.data = json.load(f)
-            # Iterate through each entry in the JSON
             for key in self.data:
                 # Get the filename and change its extension
                 old_filename = self.data[key]['filename']
@@ -73,17 +72,18 @@ class SegmentationDataset(Dataset):
         regions = image_info['regions']
 
         # Load image
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path)
+        #print("Image mode:", image.mode)  # Should print 'I;16' for 16-bit images
+
 
         # Create an empty mask with class values
-        mask = Image.new('I', image.size, 0)  # 'I' mode for 32-bit integer pixels
+        mask = Image.new('I', image.size, 7)  # 'I' mode for 32-bit integer pixels
 
         for region in regions:
             shape = region['shape_attributes']
             if 'Tissue Class' not in region['region_attributes']:
                 raise ValueError(f"'Tissue Class' is missing in region: {region}")
             tissue_class = region['region_attributes']['Tissue Class']
-            # tissue_class = region['region_attributes'].get('Tissue Class','Unknown') #TODO: wtf is this doing
             class_index, num_classes = self.class_to_index(tissue_class)
 
             if shape['name'] == 'polygon':
@@ -97,18 +97,27 @@ class SegmentationDataset(Dataset):
 
         # Convert mask to numpy array for consistency with image transformations
         mask = np.array(mask, dtype=np.int32)
-        x0,y0=gargee_function_for_making_the_crop_after_because_you_know_dude_were_making_prototypes_that_s_life(image_filename)
+        x0,y0=extract_region_by_coords(image_filename)
 
-        #TODO: doesnt slice or crop this way, fix it 
+        # Crop to 256x256
         mask=mask[x0:x0+256,y0:y0+256]
-        image_np = np.array(image)
-        image=image_np[x0:x0+256,y0:y0+256]   
 
-        if  self.transform_image:
+        image_np = np.array(image)
+        #print(np.shape(image_np))
+        image=image_np[x0:x0+256,y0:y0+256]   
+        #print("Dataloader toto "+str(np.max(image)))
+
+        if  self.transform_image and False:
+            print("toto1")
             image = self.transform_image(image)
+            print("toto2")
+            np.max(np.array(image))
             mask = self.transform_mask(Image.fromarray(mask)) 
 
-        return image, mask
+        if image.dtype.byteorder not in ('=', '|'):  # '=' means native byte order, '|' means not applicable (for non-byte type)
+            image = image.byteswap().newbyteorder()
+
+        return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.int32).to(device)
 
     def draw_polygon(self, mask, points, class_index):
         # Draw a polygon on the mask using class index

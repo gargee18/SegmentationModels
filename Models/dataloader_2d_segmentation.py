@@ -49,6 +49,7 @@ class SegmentationDataset(Dataset):
             transform_image = transforms.Compose([
             transforms.ToTensor(),
             ])
+
         with open(json_file, 'r') as f:    # r for read
             self.data = json.load(f)
             for key in self.data:
@@ -57,9 +58,11 @@ class SegmentationDataset(Dataset):
                 if old_filename.endswith('.jpg'):
                     new_filename = old_filename.replace('.jpg', '.tif')
                     self.data[key]['filename'] = new_filename
-            self.image_dir = image_dir
-            self.transform_image = transform_image
-            self.transform_mask = transform_mask
+                self.image_dir = image_dir
+                self.transform_image = transform_image
+                self.transform_mask = transform_mask
+
+            
 
     def __len__(self):
         return len(self.data)
@@ -73,8 +76,6 @@ class SegmentationDataset(Dataset):
 
         # Load image
         image = Image.open(image_path)
-        #print("Image mode:", image.mode)  # Should print 'I;16' for 16-bit images
-
 
         # Create an empty mask with class values
         mask = Image.new('I', image.size, 7)  # 'I' mode for 32-bit integer pixels
@@ -101,16 +102,12 @@ class SegmentationDataset(Dataset):
 
         # Crop to 256x256
         mask=mask[x0:x0+256,y0:y0+256]
-
         image_np = np.array(image)
-        #print(np.shape(image_np))
         image=image_np[x0:x0+256,y0:y0+256]   
-        #print("Dataloader toto "+str(np.max(image)))
+
 
         if  self.transform_image and False:
-            print("toto1")
-            image = self.transform_image(image)
-            print("toto2")
+            image = self.transform_image(Image.fromarray(image))
             np.max(np.array(image))
             mask = self.transform_mask(Image.fromarray(mask)) 
 

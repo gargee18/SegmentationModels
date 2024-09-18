@@ -19,13 +19,17 @@ class CustomUnet(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.BatchNorm2d(64),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.BatchNorm2d(128),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(128),
             nn.MaxPool2d(kernel_size=2, stride=2),
             # nn.Conv2d(128, 128, kernel_size=3, padding=1),
             # nn.ReLU(),
@@ -39,20 +43,28 @@ class CustomUnet(nn.Module):
             # nn.Conv2d(128, 128, kernel_size=3, padding=1),
             # nn.ReLU(),
             # nn.Upsample(scale_factor=2),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.BatchNorm2d(128),
             nn.Conv2d(128, 64, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.BatchNorm2d(64),
             nn.Upsample(scale_factor=2),
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 32, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.BatchNorm2d(32),
             nn.Upsample(scale_factor=2),
-#            nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
+            # nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
         )
-        self.final_layer =nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
-#        self.final_layer = nn.Softmax()  # 8 classes
+        # self.final_layer =nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
+        # self.final_layer = nn.Softmax(1)  # 8 classes
+        self.final_layer = nn.Sequential(
+            nn.Conv2d(32, 8, kernel_size=3, padding=1),  # Ensure 8 output channels
+            nn.Softmax(dim=1)  # Softmax across the channel dimension
+        )
 
     def forward(self, x):
         x1 = self.encoder(x)

@@ -114,7 +114,7 @@ class SegmentationDataset(Dataset):
         if image.dtype.byteorder not in ('=', '|'):  # '=' means native byte order, '|' means not applicable (for non-byte type)
             image = image.byteswap().newbyteorder()
 
-        return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.int32).to(device)
+        return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.float32).to(device)
 
     def draw_polygon(self, mask, points, class_index):
         # Draw a polygon on the mask using class index

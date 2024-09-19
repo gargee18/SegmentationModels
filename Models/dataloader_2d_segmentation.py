@@ -40,27 +40,53 @@ def extract_region_by_coords(image_filename):
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, json_file, image_dir, transform_mask=None, transform_image=None):
-        # Load the JSON file
-        if(transform_mask==None):
-            transform_mask=transforms.Compose([
-            transforms.ToTensor(),
-            ])
-            transform_image = transforms.Compose([
-            transforms.ToTensor(),
-            ])
 
-        with open(json_file, 'r') as f:    # r for read
-            self.data = json.load(f)
-            for key in self.data:
-                # Get the filename and change its extension
-                old_filename = self.data[key]['filename']
-                if old_filename.endswith('.jpg'):
-                    new_filename = old_filename.replace('.jpg', '.tif')
-                    self.data[key]['filename'] = new_filename
-                self.image_dir = image_dir
-                self.transform_image = transform_image
-                self.transform_mask = transform_mask
+    # def __init__(self, json_file, image_dir, transform_mask=None, transform_image=None):
+    #     # Load the JSON file
+    #     if(transform_mask==None):
+    #         transform_mask=transforms.Compose([
+    #         transforms.ToTensor(),
+    #         ])
+    #         transform_image = transforms.Compose([
+    #         transforms.ToTensor(),
+    #         ])
+
+    #     with open(json_file, 'r') as f:    # r for read
+    #         self.data = json.load(f)
+    #         for key in self.data:
+    #             # Get the filename and change its extension
+    #             old_filename = self.data[key]['filename']
+    #             if old_filename.endswith('.jpg'):
+    #                 new_filename = old_filename.replace('.jpg', '.tif')
+    #                 self.data[key]['filename'] = new_filename
+    #             self.image_dir = image_dir
+    #             self.transform_image = transform_image
+    #             self.transform_mask = transform_mask
+
+
+    def __init__(self, json_file, image_dir, augment=False):
+    # If augment is False, apply only ToTensor, otherwise apply augmentations
+            if augment:
+                self.transform = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomVerticalFlip(),
+                    transforms.RandomRotation(20),
+                    transforms.ToTensor()
+                ])
+            else:
+                self.transform = transforms.Compose([
+                    transforms.ToTensor()
+                ])
+
+            with open(json_file, 'r') as f:    # r for read
+                self.data = json.load(f)
+                for key in self.data:
+                    # Get the filename and change its extension
+                    old_filename = self.data[key]['filename']
+                    if old_filename.endswith('.jpg'):
+                        new_filename = old_filename.replace('.jpg', '.tif')
+                        self.data[key]['filename'] = new_filename
+                        self.image_dir = image_dir
 
             
 
@@ -105,14 +131,14 @@ class SegmentationDataset(Dataset):
         image_np = np.array(image)
         image=image_np[x0:x0+256,y0:y0+256]   
 
-
-        if  self.transform_image and False:
-            image = self.transform_image(Image.fromarray(image))
-            np.max(np.array(image))
-            mask = self.transform_mask(Image.fromarray(mask)) 
-
         if image.dtype.byteorder not in ('=', '|'):  # '=' means native byte order, '|' means not applicable (for non-byte type)
             image = image.byteswap().newbyteorder()
+
+        if  self.transform :
+            image = self.transform(Image.fromarray(image))
+            mask = self.transform(Image.fromarray(mask)) 
+
+        
 
         return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.float32).to(device)
 

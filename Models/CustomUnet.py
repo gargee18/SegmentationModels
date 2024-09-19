@@ -59,12 +59,12 @@ class CustomUnet(nn.Module):
             nn.Upsample(scale_factor=2),
             # nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
         )
-        # self.final_layer =nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
+        self.final_layer =nn.Conv2d(32, 8, kernel_size=3, padding=1)  # 8 classes
         # self.final_layer = nn.Softmax(1)  # 8 classes
-        self.final_layer = nn.Sequential(
-            nn.Conv2d(32, 8, kernel_size=3, padding=1),  # Ensure 8 output channels
-            nn.Softmax(dim=1)  # Softmax across the channel dimension
-        )
+        # self.final_layer = nn.Sequential(
+        #     nn.Conv2d(32, 8, kernel_size=3, padding=1),  # Ensure 8 output channels
+        #     nn.Softmax(dim=1)  # Softmax across the channel dimension
+        # )
 
     def forward(self, x):
         x1 = self.encoder(x)

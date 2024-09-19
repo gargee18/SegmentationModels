@@ -21,7 +21,7 @@ learning_rate=0.001
 num_epochs = 200
 batch_size= 16
 random_seed=42
-optimizer ="ADAM" 
+optimizer ="SDG" 
 
 # Initialize SummaryWriter
 unet_depth= "2"

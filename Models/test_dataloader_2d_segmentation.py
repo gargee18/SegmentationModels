@@ -47,10 +47,11 @@ for images, masks in dataloader:
     plt.show()
     break  # Remove or adjust this line if you want to iterate over the dataloader
 
-for images, masks in dataloader_aug:
+for images, masks  in dataloader_aug:
     images_np = images.cpu().numpy()
     masks_np = masks.cpu().numpy()
-    
+    print(f'Size of augmented images: {images_np.shape}')
+    print(f'Size of augmented masks: {masks_np.shape}')
     # Transpose the image array for correct plotting (from [batch_size, channels, height, width] to [batch_size, height, width, channels])
     images_np = np.transpose(images_np, (0, 2, 3, 1))
     

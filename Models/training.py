@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from torchvision import transforms
 from dataloader_2d_segmentation import SegmentationDataset
 from CustomUnet import CustomUnet
@@ -12,14 +12,13 @@ import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from PIL import Image 
 from sklearn.metrics import f1_score
-from torchvision.utils import make_grid
 from torch.utils.tensorboard import SummaryWriter
 
 
 # Tune Hyperparameters (learning rate, epoch, batch size, seed, optimizer)
 learning_rate=0.001
-num_epochs = 200
-batch_size= 16
+num_epochs = 500
+batch_size= 8
 random_seed=42
 optimizer ="SDG" 
 
@@ -37,8 +36,10 @@ writer = SummaryWriter(log_dir)
 json_file_path = '/home/phukon/Desktop/Model_Fitting/annotations/train_annotations.json'
 image_dir = '/home/phukon/Desktop/Model_Fitting/images/train_set/'
 
+dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= False)
+# dataset_aug = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= True)
+# new_dataset = ConcatDataset([dataset, dataset_aug])
 
-dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir)
 # Split dataset into train and validation sets
 train_indices, val_indices = train_test_split(list(range(len(dataset))), test_size=0.2, shuffle=True, random_state=random_seed)
 
@@ -53,7 +54,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CustomUnet().to(device)
 criterion = nn.CrossEntropyLoss()  # Multi-class segmentation task
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 
 #DEBUG : uncomment to test
@@ -123,35 +124,36 @@ for epoch in range(num_epochs):
 
     # Training loop
     for images, masks in train_loader:
-        images =torch.unsqueeze(images, dim=1)
+        # images =torch.unsqueeze(images, dim=1)
         images = images.permute(0, 1, 2, 3)
         images = images.to(device)
+        masks = masks.squeeze()
         masks = masks.to(device)
-
         # Zero the gradients
         optimizer.zero_grad()
 
         # Forward Pass
-        outputs = model(images)  
+        y_pred = model(images)  
 
         # Compute loss
         masks_int=masks.long()
         
         train_class_weights_tensor = torch.tensor(train_class_weights, dtype=torch.float32).to(device)
+        
 
-        num_classes = outputs.size(1)
+        num_classes = y_pred.size(1)
         if len(train_class_weights_tensor) != num_classes:
             raise ValueError(f"Number of class weights ({len(train_class_weights_tensor)}) does not match number of classes ({num_classes})")
 
-        loss = F.cross_entropy(outputs, masks_int,weight=train_class_weights_tensor, ignore_index=7)
-        # loss=criterion(outputs,masks_int)
+        loss = F.cross_entropy(y_pred, masks_int,weight=train_class_weights_tensor, ignore_index=7)
+        # loss=criterion(y_pred,masks_int)
         loss.backward()
         optimizer.step()  # Update the weights
         running_loss += loss.item()
 
         # Calculate predictions and accumulate labels
         all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
-        all_preds = torch.argmax(outputs, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
+        all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
     # Calculate training F1 score
     train_f1 = f1_score(all_labels, all_preds, average='macro')
@@ -165,21 +167,22 @@ for epoch in range(num_epochs):
     all_preds = []
     with torch.no_grad():
         for images, masks in val_loader:
-            images = torch.unsqueeze(images, dim=1)
+            # images = torch.unsqueeze(images, dim=1)
             images = images.permute(0, 1, 2, 3).to(device)
+            masks = masks.squeeze()
             masks = masks.to(device)
-            #DEBUG
-            #print(np.mean(masks.cpu().numpy()))
-            #print(np.shape(masks))
+
             val_class_weights_tensor = torch.tensor(val_class_weights, dtype=torch.float32).to(device)
-            outputs = model(images)
-            loss = F.cross_entropy(outputs, masks.long(), weight=val_class_weights_tensor, ignore_index=7)
-            # loss = criterion(outputs,masks.long())
+
+
+            y_pred = model(images)
+            loss = F.cross_entropy(y_pred, masks.long(), weight=val_class_weights_tensor, ignore_index=7)
+            # loss = criterion(y_pred,masks.long())
             val_loss += loss.item()
 
             # Calculate predictions and accumulate labels
             all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
-            all_preds = torch.argmax(outputs, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
+            all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
     # Calculate validation F1 score
     val_f1 = f1_score(all_labels, all_preds, average='macro')
@@ -190,29 +193,152 @@ for epoch in range(num_epochs):
 
 writer.close()
 
-for images, masks in val_loader:
-    images =torch.unsqueeze(images, dim=1)
-    images = images.permute(0, 1, 2, 3)
-    images = images.to(device)
-    masks = masks.to(device)
-    print(images.size())
-    print(masks.size())
 
-    optimizer.zero_grad()
-    outputs = model(images)  
-    titles = [
-    "Background", "Healthy Functional", "Healthy Nonfunctional",
-    "Necrotic Infected", "Necrotic Dry", "Bark", "White Rot", "Unknown"
+
+
+# Limit to first four images
+num_images_to_display = 4
+def display_individual_segmentation_masks(val_loader, num_images_to_display, class_names=None):
+
+    if class_names is None:
+        class_names = [
+        "Background", 
+        "Healthy Functional", 
+        "Healthy Nonfunctional",
+        "Necrotic Infected", 
+        "Necrotic Dry", 
+        "Bark", 
+        "White Rot", 
+        "Unknown"
     ]
+    for images, masks in val_loader:
+        images = images.permute(0, 1, 2, 3).to(device)
+        masks = masks.to(device)
 
-    # Create a figure and axes
-    fig, axes = plt.subplots(2, 4, figsize=(12, 6))
+        with torch.no_grad():
+            y_pred = model(images)
 
-    for i in range(8):
-        ax = axes[i // 4, i % 4]  # Determine the position in the subplot grid
-        img = outputs[0, i].detach().cpu().numpy()
-        ax.imshow(img)
-        ax.set_title(titles[i])
-        plt.colorbar(ax.imshow(img), ax=ax)
+        batch_size = images.shape[0]  # Get the current batch size
+        num_classes = y_pred.shape[1]  # Get the number of classes
 
-    plt.show()
+        # Create a figure and axes for the images
+        fig, axes = plt.subplots(min(batch_size, num_images_to_display), num_classes + 2, figsize=(15, min(batch_size, num_images_to_display) * 5))  # +2 for original and actual mask
+        
+        for i in range(min(batch_size, num_images_to_display)):  # Only loop through the first four images
+            img = images[i].detach().cpu().numpy().transpose(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
+            actual_mask = masks[i].cpu().numpy().squeeze()  # Remove singleton dimensions
+            predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy()  # Get the predicted class
+            
+            # Display original image
+            axes[i, 0].imshow(img)
+            axes[i, 0].set_title(f"Original Image {i + 1}")
+            axes[i, 0].axis('off')  # Hide axes
+
+            # Display actual segmentation
+            axes[i, 1].imshow(actual_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+            axes[i, 1].set_title(f"Actual Mask {i + 1}")
+            axes[i, 1].axis('off')  # Hide axes
+
+            # Display predicted segmentation for each class
+            for class_index in range(num_classes):
+                class_mask = (predicted_mask == class_index).astype(np.float32)  # Create a mask for the current class
+                axes[i, class_index + 2].imshow(class_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+                axes[i, class_index + 2].set_title(f"{class_names[class_index]}")
+                axes[i, class_index + 2].axis('off')  # Hide axes
+
+        plt.tight_layout()
+        plt.show()
+
+        break  
+
+    
+def display_segmentation(val_loader):
+    for images, masks in val_loader:
+        images = images.permute(0, 1, 2, 3).to(device)
+        masks = masks.to(device)
+
+        with torch.no_grad():
+            y_pred = model(images)
+
+        batch_size = images.shape[0]  # Get the current batch size
+        cols = 3  # Number of columns for the grid
+        rows = batch_size  # Each row will display one image with its masks
+
+        # Create a figure and axes for the images
+        fig, axes = plt.subplots(rows, cols, figsize=(15, rows * 5))
+        axes = axes.flatten()  # Flatten the axes array for easy indexing
+
+        for i in range(batch_size):
+            # Get the current image, actual mask, and predicted mask
+            img = images[i].detach().cpu().numpy().transpose(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
+            actual_mask = masks[i].cpu().numpy().squeeze()  # Remove singleton dimensions
+            predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy()  # Get the predicted class
+
+            # Display original image
+            axes[i * cols].imshow(img)
+            axes[i * cols].set_title(f"Original Image {i + 1}")
+            axes[i * cols].axis('off')  # Hide axes
+
+            # Display actual segmentation
+            axes[i * cols + 1].imshow(actual_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+            axes[i * cols + 1].set_title(f"Actual Mask {i + 1}")
+            axes[i * cols + 1].axis('off')  # Hide axes
+
+            # Display predicted segmentation
+            axes[i * cols + 2].imshow(predicted_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+            axes[i * cols + 2].set_title(f"Predicted Mask {i + 1}")
+            axes[i * cols + 2].axis('off')  # Hide axes
+
+        plt.tight_layout()
+        plt.show()
+    
+        break  # Remove this if you want to display all batches
+
+display_individual_segmentation_masks(val_loader, 4, class_names=None)
+
+display_segmentation(val_loader)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# for images, masks in val_loader:
+#     # images =torch.unsqueeze(images, dim=1)
+#     images = images.permute(0, 1, 2, 3)
+#     images = images.to(device)
+#     masks = masks.to(device)
+
+#     optimizer.zero_grad()
+#     y_pred = model(images)  
+    
+#     titles = [
+#     "Background", "Healthy Functional", "Healthy Nonfunctional",
+#     "Necrotic Infected", "Necrotic Dry", "Bark", "White Rot", "Unknown"
+#     ]
+
+#     # Create a figure and axes
+#     fig, axes = plt.subplots(2, 4, figsize=(12, 6))
+
+#     for i in range(8):
+#         ax = axes[i // 4, i % 4]  # Determine the position in the subplot grid
+#         img = y_pred[0, i].detach().cpu().numpy()
+#         ax.imshow(img)
+#         ax.set_title(titles[i])
+#         plt.colorbar(ax.imshow(img), ax=ax)
+
+#     plt.show()
+
+# Define class names

@@ -137,10 +137,11 @@ class SegmentationDataset(Dataset):
         if  self.transform :
             image = self.transform(Image.fromarray(image))
             mask = self.transform(Image.fromarray(mask)) 
+    
+        # return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.float32).to(device)
+        return image.clone().detach().float().requires_grad_(True).to(device), mask.clone().detach().float().to(device)
+    
 
-        
-
-        return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.float32).to(device)
 
     def draw_polygon(self, mask, points, class_index):
         # Draw a polygon on the mask using class index
@@ -163,7 +164,9 @@ class SegmentationDataset(Dataset):
         if tissue_class not in class_map:
             print(f"Warning: Unrecognized Tissue Class '{tissue_class}'")
         num_classes = len(class_map)
+
         return class_map.get(tissue_class, 0),num_classes  # Default to Unknown if class not found
+    
     
 
     

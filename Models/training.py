@@ -8,10 +8,11 @@ from torch.utils.data import DataLoader, ConcatDataset
 from torchvision import transforms
 from dataloader_2d_segmentation import SegmentationDataset
 from CustomUnet import CustomUnet
+# from unet_pytorch_segmentation import UNet
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
-from PIL import Image 
 from sklearn.metrics import f1_score
+from tqdm import tqdm 
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -21,11 +22,12 @@ num_epochs = 500
 batch_size= 8
 random_seed=42
 optimizer ="SDG" 
+do_augmentation=False
 
 # Initialize SummaryWriter
 unet_depth= "2"
 naming=optimizer
-exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"_test"
+exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"_augmentation"+str(do_augmentation)
 log_dir='/home/phukon/Desktop/Model_Fitting/runs/training_custom_unet_'+exp_name
 
 # Create directory
@@ -36,7 +38,7 @@ writer = SummaryWriter(log_dir)
 json_file_path = '/home/phukon/Desktop/Model_Fitting/annotations/train_annotations.json'
 image_dir = '/home/phukon/Desktop/Model_Fitting/images/train_set/'
 
-dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= False)
+dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= do_augmentation)
 # dataset_aug = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= True)
 # new_dataset = ConcatDataset([dataset, dataset_aug])
 
@@ -123,6 +125,7 @@ for epoch in range(num_epochs):
     all_preds = []
 
     # Training loop
+
     for images, masks in train_loader:
         # images =torch.unsqueeze(images, dim=1)
         images = images.permute(0, 1, 2, 3)
@@ -150,13 +153,12 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()  # Update the weights
         running_loss += loss.item()
-
         # Calculate predictions and accumulate labels
         all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
         all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
     # Calculate training F1 score
-    train_f1 = f1_score(all_labels, all_preds, average='macro')
+    train_f1 = f1_score(all_labels, all_preds, labels=[1,2,3,4,5,6],average='weighted')
     writer.add_scalar('F1/train', train_f1, epoch)
     writer.add_scalar('Loss/train', running_loss, epoch)
 
@@ -166,6 +168,7 @@ for epoch in range(num_epochs):
     all_labels = []
     all_preds = []
     with torch.no_grad():
+
         for images, masks in val_loader:
             # images = torch.unsqueeze(images, dim=1)
             images = images.permute(0, 1, 2, 3).to(device)
@@ -179,13 +182,13 @@ for epoch in range(num_epochs):
             loss = F.cross_entropy(y_pred, masks.long(), weight=val_class_weights_tensor, ignore_index=7)
             # loss = criterion(y_pred,masks.long())
             val_loss += loss.item()
-
+    
             # Calculate predictions and accumulate labels
             all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
             all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
     # Calculate validation F1 score
-    val_f1 = f1_score(all_labels, all_preds, average='macro')
+    val_f1 = f1_score(all_labels, all_preds, labels=[1,2,3,4,5,6],average='weighted')
     writer.add_scalar('F1/val', val_f1, epoch)
     writer.add_scalar('Loss/val', val_loss, epoch)
 
@@ -235,16 +238,16 @@ def display_individual_segmentation_masks(val_loader, num_images_to_display, cla
             axes[i, 0].axis('off')  # Hide axes
 
             # Display actual segmentation
-            axes[i, 1].imshow(actual_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+            axes[i, 1].imshow(actual_mask, cmap='jet', alpha=0.5)  
             axes[i, 1].set_title(f"Actual Mask {i + 1}")
             axes[i, 1].axis('off')  # Hide axes
 
             # Display predicted segmentation for each class
             for class_index in range(num_classes):
-                class_mask = (predicted_mask == class_index).astype(np.float32)  # Create a mask for the current class
-                axes[i, class_index + 2].imshow(class_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+                class_mask = (predicted_mask == class_index).astype(np.float32) 
+                axes[i, class_index + 2].imshow(class_mask, cmap='jet', alpha=0.5) 
                 axes[i, class_index + 2].set_title(f"{class_names[class_index]}")
-                axes[i, class_index + 2].axis('off')  # Hide axes
+                axes[i, class_index + 2].axis('off') 
 
         plt.tight_layout()
         plt.show()
@@ -271,8 +274,8 @@ def display_segmentation(val_loader):
         for i in range(batch_size):
             # Get the current image, actual mask, and predicted mask
             img = images[i].detach().cpu().numpy().transpose(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
-            actual_mask = masks[i].cpu().numpy().squeeze()  # Remove singleton dimensions
-            predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy()  # Get the predicted class
+            actual_mask = masks[i].cpu().numpy().squeeze()  
+            predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy() 
 
             # Display original image
             axes[i * cols].imshow(img)
@@ -280,20 +283,19 @@ def display_segmentation(val_loader):
             axes[i * cols].axis('off')  # Hide axes
 
             # Display actual segmentation
-            axes[i * cols + 1].imshow(actual_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+            axes[i * cols + 1].imshow(actual_mask, cmap='jet', alpha=0.5)  
             axes[i * cols + 1].set_title(f"Actual Mask {i + 1}")
             axes[i * cols + 1].axis('off')  # Hide axes
 
             # Display predicted segmentation
-            axes[i * cols + 2].imshow(predicted_mask, cmap='jet', alpha=0.5)  # Use a colormap for better visibility
+            axes[i * cols + 2].imshow(predicted_mask, cmap='jet', alpha=0.5)  
             axes[i * cols + 2].set_title(f"Predicted Mask {i + 1}")
             axes[i * cols + 2].axis('off')  # Hide axes
 
         plt.tight_layout()
         plt.show()
     
-        break  # Remove this if you want to display all batches
-
+        break  
 display_individual_segmentation_masks(val_loader, 4, class_names=None)
 
 display_segmentation(val_loader)

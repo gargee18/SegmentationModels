@@ -1,15 +1,5 @@
 # Trial of inference of a diffuser model from hugging face
-import os
-import json
-import numpy as np
-import torch
-from torchvision import transforms
-from torchvision.transforms import InterpolationMode
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image , ImageDraw
-import matplotlib.pyplot as plt
 import torch.nn as nn
-from dataloader_2d_segmentation import SegmentationDataset
 
 
 # Using locally saved pretrained model

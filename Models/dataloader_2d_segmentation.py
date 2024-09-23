@@ -69,8 +69,7 @@ class SegmentationDataset(Dataset):
             if augment:
                 self.transform = transforms.Compose([
                     transforms.RandomHorizontalFlip(),
-                    transforms.RandomVerticalFlip(),
-                    transforms.RandomRotation(20),
+                    transforms.RandomRotation([0,360]),
                     transforms.ToTensor()
                 ])
             else:
@@ -135,7 +134,10 @@ class SegmentationDataset(Dataset):
             image = image.byteswap().newbyteorder()
 
         if  self.transform :
+            seed = torch.random.seed()  # Store the random seed
+            torch.manual_seed(seed)     # Ensure the same transformations
             image = self.transform(Image.fromarray(image))
+            torch.manual_seed(seed)     # Ensure the same transformations
             mask = self.transform(Image.fromarray(mask)) 
     
         # return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.float32).to(device)

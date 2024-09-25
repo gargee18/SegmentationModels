@@ -21,14 +21,14 @@ learning_rate=0.001
 num_epochs = 500
 batch_size= 8
 random_seed=42
-optimizer ="SDG" 
+optimizer ="SGD" 
 do_augmentation=False
 
 # Initialize SummaryWriter
 unet_depth= "2"
 naming=optimizer
-exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"_augmentation"+str(do_augmentation)
-log_dir='/home/phukon/Desktop/Model_Fitting/runs/training_custom_unet_'+exp_name
+exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"__augmentation_"+str(do_augmentation)+"__test"
+log_dir='/home/phukon/Desktop/Model_Fitting/runs/training_custom_unet_with_skip_connections'+exp_name
 
 # Create directory
 os.makedirs(log_dir, exist_ok=True)
@@ -63,31 +63,45 @@ optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 #test_class_weights_tensor=torch.tensor([1,1,1,1,1,1,1,1], dtype=torch.float32).to(device)
 
 # Define a function to calculate weights for imbalanced classes
+# def compute_class_frequencies(mask):
+#     mask = mask.squeeze()
+#     mask = mask.cpu()
+#     flattened_mask = mask.flatten() # 1D
+#     class_frequencies = np.bincount(flattened_mask) # Count occurences
+#     print(f"class_frequencies= {class_frequencies}")
+#     return class_frequencies
+
 def compute_class_frequencies(mask):
-    mask = mask.squeeze()
-    mask = mask.cpu()
-    flattened_mask = mask.flatten() # 1D
-    class_frequencies = np.bincount(flattened_mask) # Count occurences
+    mask = mask.squeeze().cpu().flatten()
+    class_frequencies = np.bincount(mask) 
     print(f"class_frequencies= {class_frequencies}")
     return class_frequencies
 
+
 def compute_and_print_weights(class_frequencies):
-    total_samples = np.sum(class_frequencies)
-    print(f"Sum= {total_samples}")
-    num_classes = len(class_frequencies)
-    print(f"Number of classes= {num_classes}")
-    # weights = (1 / np.sqrt(class_frequencies))
-    weights = np.where(class_frequencies > 0, 1 / np.sqrt(class_frequencies), 0)
-    # weights = (total_samples / (num_classes * class_frequencies)) 
-    print(f"Weights= {weights}")
-    #weights = weights / np.sum(weights) if np.sum(weights) > 0 else weights
+    # Avoid division by zero
+    valid_frequencies = np.where(class_frequencies > 0, class_frequencies, 1)  # Replace 0 with 1 to avoid division by zero
+    weights = np.sqrt(1 / valid_frequencies)  # Compute weights using inverse of frequencies
+    weights /= weights.sum()  # Normalize weights
     return weights
+
+
+# def compute_and_print_weights(class_frequencies):
+#     total_samples = np.sum(class_frequencies)
+#     print(f"Sum= {total_samples}")
+#     num_classes = len(class_frequencies)
+#     print(f"Number of classes= {num_classes}")
+#     # weights = (1 / np.sqrt(class_frequencies))
+#     weights = np.where(class_frequencies > 0, 1 / np.sqrt(class_frequencies), 0)
+#     # weights = (total_samples / (num_classes * class_frequencies)) 
+#     print(f"Weights= {weights}")
+#     #weights = weights / np.sum(weights) if np.sum(weights) > 0 else weights
+#     return weights
 
 
 # Weights for training dataset
 for images, masks in train_loader:
-    masks = masks.squeeze()
-    masks= masks.to(device)
+    masks= masks.squeeze().to(device)
     class_frequencies = compute_class_frequencies(masks)
     total_elements = np.sum(class_frequencies)
     train_class_weights = compute_and_print_weights(class_frequencies)
@@ -102,8 +116,7 @@ for images, masks in train_loader:
 
 # Weights for validation dataset
 for images, masks in val_loader:
-    masks = masks.squeeze()
-    masks= masks.to(device)
+    masks = masks.squeeze().to(device)
     class_frequencies = compute_class_frequencies(masks)
     total_elements = np.sum(class_frequencies)
     val_class_weights = compute_and_print_weights(class_frequencies)
@@ -148,18 +161,23 @@ for epoch in range(num_epochs):
         if len(train_class_weights_tensor) != num_classes:
             raise ValueError(f"Number of class weights ({len(train_class_weights_tensor)}) does not match number of classes ({num_classes})")
 
-        loss = F.cross_entropy(y_pred, masks_int,weight=train_class_weights_tensor, ignore_index=7)
+        #masks_int[masks_int==0]=7
+        loss = F.cross_entropy(y_pred, masks_int, weight=train_class_weights_tensor,  ignore_index=7 )
         # loss=criterion(y_pred,masks_int)
         loss.backward()
         optimizer.step()  # Update the weights
         running_loss += loss.item()
         # Calculate predictions and accumulate labels
         all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
-        all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
+        all_preds = torch.argmax(y_pred[:,0:7,:,:], dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
     # Calculate training F1 score
     train_f1 = f1_score(all_labels, all_preds, labels=[1,2,3,4,5,6],average='weighted')
+    train_f1_hf = f1_score(all_labels, all_preds, labels=[1],average='weighted')
+    train_f1_necd = f1_score(all_labels, all_preds, labels=[3],average='weighted')
     writer.add_scalar('F1/train', train_f1, epoch)
+    writer.add_scalar('F1/train/hf', train_f1_hf, epoch)
+    writer.add_scalar('F1/train/necd', train_f1_necd, epoch)
     writer.add_scalar('Loss/train', running_loss, epoch)
 
     # Validation loop
@@ -172,31 +190,119 @@ for epoch in range(num_epochs):
         for images, masks in val_loader:
             # images = torch.unsqueeze(images, dim=1)
             images = images.permute(0, 1, 2, 3).to(device)
+            # print(len(masks))
+            # print(masks.size())
             masks = masks.squeeze()
+            # print(masks.size())
             masks = masks.to(device)
 
             val_class_weights_tensor = torch.tensor(val_class_weights, dtype=torch.float32).to(device)
 
 
             y_pred = model(images)
-            loss = F.cross_entropy(y_pred, masks.long(), weight=val_class_weights_tensor, ignore_index=7)
+            # print(y_pred.size())
+            masks_int=masks.long()
+            #masks_int[masks_int==0]=7
+            loss = F.cross_entropy(y_pred, masks_int,weight=val_class_weights_tensor,  ignore_index=7)
             # loss = criterion(y_pred,masks.long())
             val_loss += loss.item()
     
             # Calculate predictions and accumulate labels
             all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
-            all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
+            all_preds = torch.argmax(y_pred[:,0:7,:,:], dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
     # Calculate validation F1 score
     val_f1 = f1_score(all_labels, all_preds, labels=[1,2,3,4,5,6],average='weighted')
+    val_f1_hf=f1_score(all_labels, all_preds, labels=[1],average='weighted')
+    val_f1_necd=f1_score(all_labels, all_preds, labels=[3],average='weighted')
     writer.add_scalar('F1/val', val_f1, epoch)
+    writer.add_scalar('F1/val/hf', val_f1_hf, epoch)
+    writer.add_scalar('F1/val/necd', val_f1_necd, epoch)
     writer.add_scalar('Loss/val', val_loss, epoch)
 
-    print(f"Epoch [{epoch + 1}/{num_epochs}], Train Loss: {running_loss / len(train_loader):.4f}, Train F1 Score: {train_f1:.4f}, Validation Loss: {val_loss / len(val_loader):.4f}, Validation F1 Score: {val_f1:.4f}")
+    print(f"[{epoch + 1}/{num_epochs}], TRLoss: {running_loss / len(train_loader):.4f}, ValLoss: {val_loss / len(val_loader):.4f}, TrainF1: {train_f1:.4f}, ValF1: {val_f1:.4f}, ValF1hf: {val_f1_hf:.4f}, ValF1necd: {val_f1_necd:.4f}")
 
 writer.close()
 
 
+import matplotlib.pyplot as plt
+import torch
+import numpy as np
+
+def display_segmentation_with_overlay(val_loader, num_images_to_display=4, class_names=None, overlay_opacity=0.5):
+    if class_names is None:
+        class_names = [
+            "Background", 
+            "Healthy Functional", 
+            "Healthy Nonfunctional",
+            "Necrotic Infected", 
+            "Necrotic Dry", 
+            "Bark", 
+            "White Rot", 
+            "Unknown"
+        ]
+    
+    images_displayed = 0  # Keep track of how many images have been displayed
+
+    for images, masks in val_loader:
+        images = images.permute(0, 1, 2, 3).to(device)  # Permute to (B, C, H, W)
+        masks = masks.to(device)
+
+        with torch.no_grad():
+            y_pred = model(images)
+
+        batch_size = images.shape[0]  # Get the current batch size
+        images_to_display = min(batch_size, num_images_to_display - images_displayed)  # Number of images to display in this batch
+
+        # Create a figure and axes for the images, 4 columns for each: original, actual mask, predicted mask, overlay
+        fig, axes = plt.subplots(images_to_display, 4, figsize=(20, images_to_display * 5))
+
+        # Ensure that axes is always 2D, even if there's only one row
+        axes = np.atleast_2d(axes)
+
+        for i in range(images_to_display):
+            img = images[i].detach().cpu().numpy().transpose(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
+
+            # Convert the RGB image to grayscale (average of R, G, B channels)
+            grayscale_img = np.mean(img, axis=-1)
+
+            actual_mask = masks[i].cpu().numpy().squeeze()  # Remove singleton dimensions
+            predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy()  # Get the predicted mask
+
+            # Display the original image (converted to grayscale)
+            axes[i, 0].imshow(grayscale_img, cmap='gray')
+            axes[i, 0].set_title(f"Original Grayscale Image {images_displayed + i + 1}")
+            axes[i, 0].axis('off')
+
+            # Display the actual segmentation mask
+            axes[i, 1].imshow(actual_mask, cmap='jet', alpha=0.5)
+            axes[i, 1].set_title(f"Expected Mask {images_displayed + i + 1}")
+            axes[i, 1].axis('off')
+
+            # Display the predicted segmentation mask
+            axes[i, 2].imshow(predicted_mask, cmap='jet', alpha=0.5)
+            axes[i, 2].set_title(f"Predicted Mask {images_displayed + i + 1}")
+            axes[i, 2].axis('off')
+
+            # Overlay the predicted mask on the grayscale image with low opacity
+            axes[i, 3].imshow(grayscale_img, cmap='gray')  # Display grayscale image
+            axes[i, 3].imshow(predicted_mask, cmap='jet', alpha=overlay_opacity)  # Overlay colorful mask
+            axes[i, 3].set_title(f"Overlay {images_displayed + i + 1}")
+            axes[i, 3].axis('off')
+
+        plt.tight_layout()
+        plt.show()
+
+        images_displayed += images_to_display  # Update the count of displayed images
+        
+        if images_displayed >= num_images_to_display:
+            break  # Stop if we have displayed the requested number of images
+
+    
+
+
+
+display_segmentation_with_overlay(val_loader, 4, class_names=None)
 
 
 # Limit to first four images
@@ -296,9 +402,7 @@ def display_segmentation(val_loader):
         plt.show()
     
         break  
-display_individual_segmentation_masks(val_loader, 4, class_names=None)
 
-display_segmentation(val_loader)
 
 
 

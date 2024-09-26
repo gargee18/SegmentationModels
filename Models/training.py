@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
 from torchvision import transforms
 from dataloader_2d_segmentation import SegmentationDataset
-from CustomUnet import CustomUnet
+from CustomUnetWithSkip import CustomUnetWithSkip
 # from unet_pytorch_segmentation import UNet
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
@@ -17,30 +17,29 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 # Tune Hyperparameters (learning rate, epoch, batch size, seed, optimizer)
-learning_rate=0.001
+learning_rate=0.005
 num_epochs = 500
-batch_size= 8
+batch_size= 16
 random_seed=42
 optimizer ="SGD" 
 do_augmentation=False
+activation = "ReLU"
 
 # Initialize SummaryWriter
 unet_depth= "2"
 naming=optimizer
-exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"__augmentation_"+str(do_augmentation)+"__test"
-log_dir='/home/phukon/Desktop/Model_Fitting/runs/training_custom_unet_with_skip_connections'+exp_name
+exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"__augmentation_"+str(do_augmentation)+"__activation_"+str(activation)
+log_dir='/home/gargee/Model_Fitting/runs/training_custom_unet_with_skip_connections'+exp_name
 
 # Create directory
 os.makedirs(log_dir, exist_ok=True)
 writer = SummaryWriter(log_dir)
 
 # Define paths for annotations and source image, and create the dataloader
-json_file_path = '/home/phukon/Desktop/Model_Fitting/annotations/train_annotations.json'
-image_dir = '/home/phukon/Desktop/Model_Fitting/images/train_set/'
+json_file_path = '/home/gargee/Model_Fitting/annotations/train_annotations.json'
+image_dir = '/home/gargee/Model_Fitting/images/train_set/'
 
 dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= do_augmentation)
-# dataset_aug = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= True)
-# new_dataset = ConcatDataset([dataset, dataset_aug])
 
 # Split dataset into train and validation sets
 train_indices, val_indices = train_test_split(list(range(len(dataset))), test_size=0.2, shuffle=True, random_state=random_seed)
@@ -54,23 +53,13 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 # Define device, model, transformation loss function and optimizer 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = CustomUnet().to(device)
+model = CustomUnetWithSkip(1,8).to(device)
 criterion = nn.CrossEntropyLoss()  # Multi-class segmentation task
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 
 #DEBUG : uncomment to test
 #test_class_weights_tensor=torch.tensor([1,1,1,1,1,1,1,1], dtype=torch.float32).to(device)
-
-# Define a function to calculate weights for imbalanced classes
-# def compute_class_frequencies(mask):
-#     mask = mask.squeeze()
-#     mask = mask.cpu()
-#     flattened_mask = mask.flatten() # 1D
-#     class_frequencies = np.bincount(flattened_mask) # Count occurences
-#     print(f"class_frequencies= {class_frequencies}")
-#     return class_frequencies
-
 def compute_class_frequencies(mask):
     mask = mask.squeeze().cpu().flatten()
     class_frequencies = np.bincount(mask) 
@@ -84,19 +73,6 @@ def compute_and_print_weights(class_frequencies):
     weights = np.sqrt(1 / valid_frequencies)  # Compute weights using inverse of frequencies
     weights /= weights.sum()  # Normalize weights
     return weights
-
-
-# def compute_and_print_weights(class_frequencies):
-#     total_samples = np.sum(class_frequencies)
-#     print(f"Sum= {total_samples}")
-#     num_classes = len(class_frequencies)
-#     print(f"Number of classes= {num_classes}")
-#     # weights = (1 / np.sqrt(class_frequencies))
-#     weights = np.where(class_frequencies > 0, 1 / np.sqrt(class_frequencies), 0)
-#     # weights = (total_samples / (num_classes * class_frequencies)) 
-#     print(f"Weights= {weights}")
-#     #weights = weights / np.sum(weights) if np.sum(weights) > 0 else weights
-#     return weights
 
 
 # Weights for training dataset
@@ -138,7 +114,6 @@ for epoch in range(num_epochs):
     all_preds = []
 
     # Training loop
-
     for images, masks in train_loader:
         # images =torch.unsqueeze(images, dim=1)
         images = images.permute(0, 1, 2, 3)
@@ -150,10 +125,10 @@ for epoch in range(num_epochs):
 
         # Forward Pass
         y_pred = model(images)  
-
+        # print(f"Predicted mask {y_pred.shape}")
         # Compute loss
         masks_int=masks.long()
-        
+        # print(f"Input mask {masks_int.shape}")
         train_class_weights_tensor = torch.tensor(train_class_weights, dtype=torch.float32).to(device)
         
 
@@ -169,8 +144,20 @@ for epoch in range(num_epochs):
         running_loss += loss.item()
         # Calculate predictions and accumulate labels
         all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
+        # print(f"All labels{all_labels.shape}")
         all_preds = torch.argmax(y_pred[:,0:7,:,:], dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
 
+
+        # # Get probabilities for each class
+        # softmax_probs = F.softmax(y_pred[:,0:7,:,:], dim=1)
+        # # Get predicted class indices
+        # all_preds = torch.argmax(softmax_probs, dim=1).flatten().cpu().numpy()
+
+
+
+        # print(f"All preds argmax {all_preds.shape}")
+        # all_preds = torch.softmax(y_pred[:,0:7,:,:], dim=1).detach().cpu()
+        # print(f"Softmax {all_preds.shape}")
     # Calculate training F1 score
     train_f1 = f1_score(all_labels, all_preds, labels=[1,2,3,4,5,6],average='weighted')
     train_f1_hf = f1_score(all_labels, all_preds, labels=[1],average='weighted')
@@ -210,7 +197,11 @@ for epoch in range(num_epochs):
             # Calculate predictions and accumulate labels
             all_labels = masks.flatten().cpu().numpy()  # Ensure the labels are flattened and moved to CPU
             all_preds = torch.argmax(y_pred[:,0:7,:,:], dim=1).flatten().cpu().numpy()  # Get predicted class indices and flatten
-
+            # Get probabilities for each class
+            # softmax_probs = F.softmax(y_pred[:,0:7,:,:], dim=1)
+            # # # Get predicted class indices
+            # all_preds = torch.argmax(softmax_probs, dim=1).flatten().cpu().numpy()
+            # all_preds = torch.softmax(y_pred[:,0:7,:,:], dim=1).flatten().cpu()
     # Calculate validation F1 score
     val_f1 = f1_score(all_labels, all_preds, labels=[1,2,3,4,5,6],average='weighted')
     val_f1_hf=f1_score(all_labels, all_preds, labels=[1],average='weighted')
@@ -225,9 +216,6 @@ for epoch in range(num_epochs):
 writer.close()
 
 
-import matplotlib.pyplot as plt
-import torch
-import numpy as np
 
 def display_segmentation_with_overlay(val_loader, num_images_to_display=4, class_names=None, overlay_opacity=0.5):
     if class_names is None:
@@ -291,13 +279,16 @@ def display_segmentation_with_overlay(val_loader, num_images_to_display=4, class
             axes[i, 3].axis('off')
 
         plt.tight_layout()
-        plt.show()
+        plt.show() #This line generate a bug when run in ssh on phenodrone : 
+
 
         images_displayed += images_to_display  # Update the count of displayed images
-        
+
         if images_displayed >= num_images_to_display:
             break  # Stop if we have displayed the requested number of images
-
+            #libGL error: MESA-LOADER: failed to open swrast: /usr/lib/dri/swrast_dri.so: 
+            #Ne peut ouvrir le fichier d'objet partagé: Aucun fichier ou dossier de ce nom (search paths /usr/lib/x86_64-linux-gnu/dri:\$${ORIGIN}/dri:/usr/lib/dri, suffix _dri)
+            #libGL error: failed to load driver: swrast
     
 
 

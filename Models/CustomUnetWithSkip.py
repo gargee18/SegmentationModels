@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch
 
 
-testing=False
+testing=True
 
 
 class ConvReLU(nn.Module):

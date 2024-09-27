@@ -20,15 +20,15 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Tune Hyperparameters (learning rate, epoch, batch size, seed, optimizer)
 learning_rate=0.001
-num_epochs = 500
+num_epochs = 2000
 batch_size= 8
 random_seed=42
 optimizer ="SGD" 
-do_augmentation=False
+do_augmentation=True
 activation = "ReLU"
 
 # Initialize SummaryWriter
-unet_depth= "2"
+unet_depth= "4"
 naming=optimizer
 exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"__augmentation_"+str(do_augmentation)+"__activation_"+str(activation)
 log_dir='/home/phukon/Desktop/Model_Fitting/runs/training_custom_unet_with_skip_connections'+exp_name
@@ -56,6 +56,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 # Define device, model, transformation loss function and optimizer 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # model = CustomUnet().to(device)
+
 model = CustomUnetWithSkip(1,8).to(device)
 criterion = nn.CrossEntropyLoss()  # Multi-class segmentation task
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
@@ -101,6 +102,7 @@ for epoch in range(num_epochs):
     writer.add_scalar('F1/train/necd', train_f1_necd, epoch)
     writer.add_scalar('Loss/train', running_loss, epoch)
 
+
     # Validation loop
     model.eval()  # Set model to evaluation mode
     val_loss = 0.0
@@ -132,7 +134,7 @@ for epoch in range(num_epochs):
     print(f"[{epoch + 1}/{num_epochs}], TRLoss: {running_loss / len(train_loader):.4f}, ValLoss: {val_loss / len(val_loader):.4f}, TrainF1: {train_f1:.4f}, ValF1: {val_f1:.4f}, ValF1hf: {val_f1_hf:.4f}, ValF1necd: {val_f1_necd:.4f}")
 
 writer.close()
+Utils.display_segmentation_every_500_epochs(model, device, val_loader, 4)
 
-
-Utils.display_segmentation_with_overlay(model, device, val_loader, 4, class_names=None)
+# Utils.display_segmentation_with_overlay(model, device, val_loader, 4)
 

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch
 
 
-testing=False
+testing=True
 
 
 class ConvReLU(nn.Module):
@@ -51,12 +51,11 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
-
         self.unpool = nn.MaxUnpool2d(kernel_size=2, stride=2)#scale_factor=2
         self.conv = ConvReLU(in_ch,out_ch)
     
     def forward(self, x, ind):
-        unpool = self.unpool(x, ind)#
+        unpool = self.unpool(x, ind)
         convcode = self.conv(unpool)
         return convcode
 
@@ -77,8 +76,7 @@ class CustomUnetWithSkip(nn.Module):
         self.decoder_block_2 = Decoder(128, 64)
         self.decoder_block_3 = Decoder(64, 32)
 
-        self.out = nn.Conv2d(in_channels = 32, out_channels = num_classes, kernel_size = 1 )
-
+        self.out = nn.Conv2d(in_channels = 32, out_channels = num_classes, kernel_size=3, padding=1 )
 
     def forward(self, x):
         # encode

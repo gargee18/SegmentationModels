@@ -66,6 +66,7 @@ class SegmentationDataset(Dataset):
 
     def __init__(self, json_file, image_dir, augment=False):
     # If augment is False, apply only ToTensor, otherwise apply augmentations
+            self.seed = torch.random.seed() 
             if augment:
                 self.transform = transforms.Compose([
                     transforms.RandomHorizontalFlip(),
@@ -134,10 +135,10 @@ class SegmentationDataset(Dataset):
             image = image.byteswap().newbyteorder()
 
         if  self.transform :
-            seed = torch.random.seed()  # Store the random seed
-            torch.manual_seed(seed)     # Ensure the same transformations
+            self.seed += 1 # Store the random seed
+            torch.manual_seed(self.seed)     # Ensure the same transformations
             image = self.transform(Image.fromarray(image))
-            torch.manual_seed(seed)     # Ensure the same transformations
+            torch.manual_seed(self.seed)     # Ensure the same transformations
             mask = self.transform(Image.fromarray(mask)) 
     
         # return torch.tensor(image, dtype=torch.float32).to(device), torch.tensor(mask, dtype=torch.float32).to(device)

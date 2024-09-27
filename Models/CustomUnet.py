@@ -2,7 +2,7 @@
 import torch.nn as nn
 import torch
 
-
+testing=True
 
 # # Using locally saved pretrained model
 class CustomUnet(nn.Module):

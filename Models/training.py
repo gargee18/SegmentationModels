@@ -20,26 +20,26 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Tune Hyperparameters (learning rate, epoch, batch size, seed, optimizer)
 learning_rate=0.001
-num_epochs = 500
+num_epochs = 2500
 batch_size= 8
 random_seed=42
 optimizer ="SGD" 
-do_augmentation=False
+do_augmentation=True
 activation = "ReLU"
 
 # Initialize SummaryWriter
 unet_depth= "2"
 naming=optimizer
 exp_name=naming+"_bs_"+str(batch_size)+"__lr_"+str(learning_rate)+"__epoc_"+str(num_epochs)+"__optim_"+str(optimizer)+"__unet_depth_"+str(unet_depth)+"__augmentation_"+str(do_augmentation)+"__activation_"+str(activation)
-log_dir='/home/phukon/Desktop/Model_Fitting/runs/training_custom_unet_with_skip_connections'+exp_name
+log_dir='/home/gargee/Model_Fitting/runs/training_custom_unet_with_skip_connections'+exp_name
 
 # Create directory
 os.makedirs(log_dir, exist_ok=True)
 writer = SummaryWriter(log_dir)
 
 # Define paths for annotations and source image, and create the dataloader
-json_file_path = '/home/phukon/Desktop/Model_Fitting/annotations/train_annotations.json'
-image_dir = '/home/phukon/Desktop/Model_Fitting/images/train_set/'
+json_file_path = '/home/gargee/Model_Fitting/annotations/train_annotations.json'
+image_dir = '/home/gargee/Model_Fitting/images/train_set/'
 
 dataset = SegmentationDataset(json_file=json_file_path, image_dir=image_dir, augment= do_augmentation)
 

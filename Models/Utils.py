@@ -48,17 +48,7 @@ def display_segmentation_with_overlay(model, device, val_loader, num_images_to_d
             "Unknown"
         ]
 
-        colors = [
-        "#000000",  # Black for Background
-        "#FFA500",  # Orange for Healthy Functional
-        "#00BFFF",  # Blue for Healthy Nonfunctional
-        "#FF0000",  # Red for Necrotic Infected
-        "#FFFF00",  # Yellow for Necrotic Dry
-        "#008000",  # Green for Bark
-        "#A020F0",  # Purple for White Rot
-        "#808080"   # Gray for Unknown
-    ]
-    custom_cmap = ListedColormap(colors)
+
     cmap = plt.get_cmap('viridis')
     bounds = np.arange(len(class_names) + 1)  # Boundaries between classes (0, 1, 2, ..., 8)
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index

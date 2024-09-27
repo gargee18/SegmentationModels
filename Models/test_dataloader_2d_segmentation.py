@@ -15,7 +15,7 @@ dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
 dataloader_aug = DataLoader(dataset_aug,batch_size=4, shuffle=False)
 
 for images, masks in dataloader:
-    images_np = images.cpu().numpy()
+    images_np = images.cpu().detach().numpy()
     masks_np = masks.cpu().numpy()
     
     # Transpose the image array for correct plotting (from [batch_size, channels, height, width] to [batch_size, height, width, channels])

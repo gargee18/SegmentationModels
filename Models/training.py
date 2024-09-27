@@ -20,7 +20,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Tune Hyperparameters (learning rate, epoch, batch size, seed, optimizer)
 learning_rate=0.001
-num_epochs = 5
+num_epochs = 5000
 batch_size= 8
 random_seed=42
 optimizer ="SGD" 

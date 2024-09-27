@@ -70,6 +70,7 @@ class SegmentationDataset(Dataset):
             if augment:
                 self.transform = transforms.Compose([
                     transforms.RandomHorizontalFlip(),
+                    transforms.RandomPerspective(0.5), # degree of distortion
                     transforms.RandomRotation([0,360]),
                     transforms.ToTensor()
                 ])

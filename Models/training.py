@@ -20,7 +20,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # Tune Hyperparameters (learning rate, epoch, batch size, seed, optimizer)
 learning_rate=0.001
-num_epochs = 2000
+num_epochs = 
 batch_size= 8
 random_seed=42
 optimizer ="SGD" 
@@ -134,7 +134,7 @@ for epoch in range(num_epochs):
     print(f"[{epoch + 1}/{num_epochs}], TRLoss: {running_loss / len(train_loader):.4f}, ValLoss: {val_loss / len(val_loader):.4f}, TrainF1: {train_f1:.4f}, ValF1: {val_f1:.4f}, ValF1hf: {val_f1_hf:.4f}, ValF1necd: {val_f1_necd:.4f}")
 
 writer.close()
-Utils.display_segmentation_every_500_epochs(model, device, val_loader, 4)
 
-# Utils.display_segmentation_with_overlay(model, device, val_loader, 4)
+
+Utils.display_segmentation_with_overlay(model, device, val_loader, 4)
 

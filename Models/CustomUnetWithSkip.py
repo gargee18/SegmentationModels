@@ -52,7 +52,7 @@ class Decoder(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.unpool = nn.MaxUnpool2d(kernel_size=2, stride=2)#scale_factor=2
-        self.conv = ConvReLU(in_ch,out_ch)
+        self.conv = DeConvReLU(in_ch,out_ch)
     
     def forward(self, x, ind):
         unpool = self.unpool(x, ind)

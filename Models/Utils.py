@@ -35,18 +35,19 @@ def get_weights(loader, device):
 
     return class_weights
 
-def display_segmentation_with_overlay(model, device, val_loader, num_images_to_display):
-    
-    class_names = [
-        "Background", 
-        "Healthy Functional", 
-        "Healthy Nonfunctional",
-        "Necrotic Infected", 
-        "Necrotic Dry", 
-        "Bark", 
-        "White Rot", 
-        "Unknown"
-    ]
+def display_segmentation_with_overlay(model, device, val_loader, num_images_to_display, class_names=None):
+    if class_names is None:
+        class_names = [
+            "Background", 
+            "Healthy Functional", 
+            "Healthy Nonfunctional",
+            "Necrotic Infected", 
+            "Necrotic Dry", 
+            "Bark", 
+            "White Rot", 
+            "Unknown"
+        ]
+
 
     cmap = plt.get_cmap('viridis')
     bounds = np.arange(len(class_names) + 1)  # Boundaries between classes (0, 1, 2, ..., 8)
@@ -99,13 +100,13 @@ def display_segmentation_with_overlay(model, device, val_loader, num_images_to_d
             axes[i, 3].axis('off')
 
             # plt.tight_layout()
-            plt.show() #This line generate a bug when run in ssh on phenodrone : 
+        plt.show() #This line generate a bug when run in ssh on phenodrone : 
 
 
-            images_displayed += images_to_display  # Update the count of displayed images
+        images_displayed += images_to_display  # Update the count of displayed images
 
-            if images_displayed >= num_images_to_display:
-                break  # Stop if we have displayed the requested number of images
+        # if images_displayed >= num_images_to_display:
+        #     break  # Stop if we have displayed the requested number of images
             #libGL error: MESA-LOADER: failed to open swrast: /usr/lib/dri/swrast_dri.so: 
             #Ne peut ouvrir le fichier d'objet partagé: Aucun fichier ou dossier de ce nom (search paths /usr/lib/x86_64-linux-gnu/dri:\$${ORIGIN}/dri:/usr/lib/dri, suffix _dri)
             #libGL error: failed to load driver: swrast
@@ -234,85 +235,3 @@ def basic_output_display(model, device, val_loader, optimizer):
 
 
 
-import torch
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.colors import BoundaryNorm
-
-# Set the matplotlib backend to 'Agg' to avoid display errors in headless environments (like SSH)
-plt.switch_backend('Agg')
-
-def display_segmentation_every_500_epochs(model, device, val_loader, num_images_to_display, epoch):
-
-    class_names = [
-        "Background", 
-        "Healthy Functional", 
-        "Healthy Nonfunctional",
-        "Necrotic Infected", 
-        "Necrotic Dry", 
-        "Bark", 
-        "White Rot", 
-        "Unknown"
-    ]
-
-    # Define a colormap and normalization for classes
-    cmap = plt.get_cmap('viridis')
-    bounds = np.arange(len(class_names) + 1)  # Boundaries between classes (0, 1, 2, ..., 8)
-    norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
-
-    images_displayed = 0  # Keep track of how many images have been displayed
-
-    # Only display every 500 epochs
-    if epoch % 500 == 0:
-        for images, masks in val_loader:
-            images = images.permute(0, 1, 2, 3).to(device)  # Permute to (B, C, H, W)
-            masks = masks.to(device)
-            with torch.no_grad():
-                y_pred = model(images)
-
-            batch_size = images.shape[0]  # Get the current batch size
-            images_to_display = min(batch_size, num_images_to_display - images_displayed)  # Number of images to display in this batch
-
-            # Create a figure and axes for the images, 4 columns for each: original, actual mask, predicted mask, overlay
-            fig, axes = plt.subplots(images_to_display, 4, figsize=(20, images_to_display * 5))
-
-            # Ensure that axes is always 2D, even if there's only one row
-            axes = np.atleast_2d(axes)
-
-            for i in range(images_to_display):
-                img = images[i].detach().cpu().numpy().transpose(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
-
-                # Convert the RGB image to grayscale (average of R, G, B channels)
-                grayscale_img = np.mean(img, axis=-1)
-
-                actual_mask = masks[i].cpu().numpy().squeeze()  # Remove singleton dimensions
-                predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy()  # Get the predicted mask
-
-                # Display the original image (converted to grayscale)
-                axes[i, 0].imshow(grayscale_img, cmap='gray')
-                axes[i, 0].set_title(f"Original Grayscale Image {images_displayed + i + 1}")
-                axes[i, 0].axis('off')
-
-                # Display the actual segmentation mask
-                axes[i, 1].imshow(actual_mask, cmap=cmap, norm=norm)
-                axes[i, 1].set_title(f"Expected Mask {images_displayed + i + 1}")
-                axes[i, 1].axis('off')
-
-                # Display the predicted segmentation mask
-                axes[i, 2].imshow(predicted_mask, cmap=cmap, norm=norm)
-                axes[i, 2].set_title(f"Predicted Mask {images_displayed + i + 1}")
-                axes[i, 2].axis('off')
-
-                # Overlay the predicted mask on the grayscale image with low opacity
-                axes[i, 3].imshow(grayscale_img, cmap='gray')  # Display grayscale image
-                axes[i, 3].imshow(predicted_mask, cmap=cmap, alpha=0.5, norm=norm)  # Overlay colorful mask
-                axes[i, 3].set_title(f"Overlay {images_displayed + i + 1}")
-                axes[i, 3].axis('off')
-
-            # Save the plot as an image file instead of displaying it
-            plt.savefig(f'segmentation_epoch_{epoch}_batch_{images_displayed}.png', bbox_inches='tight')
-
-            images_displayed += images_to_display  # Update the count of displayed images
-
-            if images_displayed >= num_images_to_display:
-                break  # Stop if we have displayed the requested number of images

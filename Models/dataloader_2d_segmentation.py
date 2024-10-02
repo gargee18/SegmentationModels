@@ -41,29 +41,6 @@ def extract_region_by_coords(image_filename):
 
 class SegmentationDataset(Dataset):
 
-    # def __init__(self, json_file, image_dir, transform_mask=None, transform_image=None):
-    #     # Load the JSON file
-    #     if(transform_mask==None):
-    #         transform_mask=transforms.Compose([
-    #         transforms.ToTensor(),
-    #         ])
-    #         transform_image = transforms.Compose([
-    #         transforms.ToTensor(),
-    #         ])
-
-    #     with open(json_file, 'r') as f:    # r for read
-    #         self.data = json.load(f)
-    #         for key in self.data:
-    #             # Get the filename and change its extension
-    #             old_filename = self.data[key]['filename']
-    #             if old_filename.endswith('.jpg'):
-    #                 new_filename = old_filename.replace('.jpg', '.tif')
-    #                 self.data[key]['filename'] = new_filename
-    #             self.image_dir = image_dir
-    #             self.transform_image = transform_image
-    #             self.transform_mask = transform_mask
-
-
     def __init__(self, json_file, image_dir, augment=False):
     # If augment is False, apply only ToTensor, otherwise apply augmentations
             self.seed = torch.random.seed() 

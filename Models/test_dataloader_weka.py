@@ -1,4 +1,4 @@
-from dataloader_weka import ImageMaskDataset 
+from image_mask_dataset import ImageMaskDataset 
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np

@@ -5,6 +5,14 @@ import torch
 from matplotlib.colors import ListedColormap, BoundaryNorm
 #DEBUG : uncomment to test
 #test_class_weights_tensor=torch.tensor([1,1,1,1,1,1,1,1], dtype=torch.float32).to(device)
+
+def save_checkpoint(model, best_model_path, epoch, train_loss, val_loss, moving_avg_val_loss, best_val_loss):
+    if moving_avg_val_loss < best_val_loss:
+        torch.save(model.state_dict(), best_model_path)
+        print(f"Saved new best model at epoch {epoch + 1}")
+        return moving_avg_val_loss
+    return best_val_loss
+
 def compute_class_frequencies(mask):
     mask = mask.squeeze().cpu().flatten()
     class_frequencies = np.bincount(mask) 

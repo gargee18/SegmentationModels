@@ -1,4 +1,4 @@
-from dataloader_2d_segmentation import SegmentationDataset  # Import the class from the class definition file
+from segmentation_dataset import SegmentationDataset  # Import the class from the class definition file
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np

@@ -35,17 +35,17 @@ def get_weights(loader, device):
 
     return class_weights
 
-def display_segmentation_with_overlay(model, device, val_loader, num_images_to_display, class_names=None):
+def display_segmentation_with_overlay(model, device, val_loader, nb_images_to_display, class_names=None):
     if class_names is None:
         class_names = [
-            "Background", 
-            "Healthy Functional", 
-            "Healthy Nonfunctional",
-            "Necrotic Infected", 
-            "Necrotic Dry", 
-            "Bark", 
-            "White Rot", 
-            "Unknown"
+            "Healthy Functional",    #0
+            "Healthy Nonfunctional", #1
+            "Necrotic Infected",     #2
+            "Necrotic Dry",          #3
+            "White Rot",             #4
+            "Bark",                  #5
+            "Pith",                  #6
+            "Background",            #7
         ]
 
 
@@ -53,7 +53,7 @@ def display_segmentation_with_overlay(model, device, val_loader, num_images_to_d
     bounds = np.arange(len(class_names) + 1)  # Boundaries between classes (0, 1, 2, ..., 8)
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
 
-    images_displayed = 0  # Keep track of how many images have been displayed
+    nb_images_displayed = 0  # Keep track of how many images have been displayed
     with torch.no_grad():
         for images, masks in val_loader:
             images = images.permute(0, 1, 2, 3).to(device)  # Permute to (B, C, H, W)
@@ -61,7 +61,7 @@ def display_segmentation_with_overlay(model, device, val_loader, num_images_to_d
             y_pred = model(images)
 
         batch_size = images.shape[0]  # Get the current batch size
-        images_to_display = min(batch_size, num_images_to_display - images_displayed)  # Number of images to display in this batch
+        images_to_display = min(batch_size, nb_images_to_display - nb_images_displayed)  # Number of images to display in this batch
 
         # Create a figure and axes for the images, 4 columns for each: original, actual mask, predicted mask, overlay
         fig, axes = plt.subplots(images_to_display, 4, figsize=(20, images_to_display * 5))
@@ -80,30 +80,30 @@ def display_segmentation_with_overlay(model, device, val_loader, num_images_to_d
 
             # Display the original image (converted to grayscale)
             axes[i, 0].imshow(grayscale_img, cmap='gray')
-            axes[i, 0].set_title(f"Original Grayscale Image {images_displayed + i + 1}")
+            axes[i, 0].set_title(f"Original Grayscale Image {nb_images_displayed + i + 1}")
             axes[i, 0].axis('off')
 
             # Display the actual segmentation mask
             axes[i, 1].imshow(actual_mask, cmap=cmap, norm=norm)
-            axes[i, 1].set_title(f"Expected Mask {images_displayed + i + 1}")
+            axes[i, 1].set_title(f"Expected Mask {nb_images_displayed + i + 1}")
             axes[i, 1].axis('off')
 
             # Display the predicted segmentation mask
             axes[i, 2].imshow(predicted_mask, cmap=cmap, norm=norm)
-            axes[i, 2].set_title(f"Predicted Mask {images_displayed + i + 1}")
+            axes[i, 2].set_title(f"Predicted Mask {nb_images_displayed + i + 1}")
             axes[i, 2].axis('off')
 
             # Overlay the predicted mask on the grayscale image with low opacity
             axes[i, 3].imshow(grayscale_img, cmap='gray')  # Display grayscale image
             axes[i, 3].imshow(predicted_mask, cmap=cmap, alpha=0.5,norm=norm )  # Overlay colorful mask
-            axes[i, 3].set_title(f"Overlay {images_displayed + i + 1}")
+            axes[i, 3].set_title(f"Overlay {nb_images_displayed + i + 1}")
             axes[i, 3].axis('off')
 
             # plt.tight_layout()
         plt.show() #This line generate a bug when run in ssh on phenodrone : 
 
 
-        images_displayed += images_to_display  # Update the count of displayed images
+        nb_images_displayed += images_to_display  # Update the count of displayed images
 
         # if images_displayed >= num_images_to_display:
         #     break  # Stop if we have displayed the requested number of images

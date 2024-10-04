@@ -9,7 +9,7 @@ import numpy as np
 #Define annotations and source image, and create the dataloader
 mask_path = '/home/phukon/Desktop/Model_Fitting/weka_dataset/masks/'
 image_dir = '/home/phukon/Desktop/Model_Fitting/weka_dataset/images/train_set/'
-dataset = ImageMaskDataset(image_dir=image_dir, mask_dir = mask_path, transform = None)
+dataset = ImageMaskDataset(image_dir=image_dir, mask_dir = mask_path, augment = True)
 dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
 for images, masks in dataloader:

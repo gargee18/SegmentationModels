@@ -8,10 +8,30 @@ from torch.utils.data import DataLoader
 import numpy as np
 
 class ImageMaskDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, transform=None):
+    def __init__(self, image_dir, mask_dir, augment=False):
+        self.seed = torch.random.seed() 
+        self.augment=augment
+        if self.augment:
+            self.transform_xray = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomPerspective(0.5, fill=40,interpolation=Image.NEAREST), # degree of distortion
+                transforms.RandomRotation([0,360], fill=40,interpolation=Image.NEAREST),
+                # transforms.ToTensor()
+            ])
+            self.transform_mask = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomPerspective(0.5, fill=7,interpolation=Image.NEAREST), # degree of distortion
+                transforms.RandomRotation([0,360], fill=7,interpolation=Image.NEAREST),
+                # transforms.ToTensor()
+            ])
+        else:
+            self.transform = transforms.Compose([
+                transforms.ToTensor()
+            ])
+
         self.image_dir = image_dir
         self.mask_dir = mask_dir
-        self.transform = transform
+        #self.transform = transform
         self.image_filenames = os.listdir(image_dir)
     
     def __len__(self):
@@ -26,15 +46,23 @@ class ImageMaskDataset(Dataset):
         
         image = Image.open(img_path)
         mask = Image.open(mask_path)
-    
+
         image = torch.tensor(np.array(image).astype(np.float32)).unsqueeze(0)
         mask = torch.tensor(np.array(mask).astype(np.float32)).unsqueeze(0)
-        
+    
         # Apply transformations if provided
-        if self.transform and False:
-            image = self.transform(image)
-            mask = self.transform(mask)
         
+        if  self.augment :
+            self.seed += 1 # Store the random seed
+            torch.manual_seed(self.seed)     # Ensure the same transformations
+            image = self.transform_xray(image)#Image.fromarray(image)
+            torch.manual_seed(self.seed)     # Ensure the same transformations
+            mask = self.transform_mask(mask)#Image.fromarray(mask) 
+      
+        
+
+
+
         return image, mask
 
 

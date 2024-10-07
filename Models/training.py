@@ -53,13 +53,13 @@ train_indices, val_indices = train_test_split(list(range(len(dataset))), test_si
 train_dataset = torch.utils.data.Subset(dataset, train_indices)
 val_dataset = torch.utils.data.Subset(dataset, val_indices)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 # Define device, model, transformation loss function and optimizer 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CustomUnetWithSkip(1,8).to(device)
-criterion = nn.CrossEntropyLoss()  # Multi-class segmentation task
+# criterion = nn.CrossEntropyLoss()  # Multi-class segmentation task
+criterion = F.cross_entropy()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 # Track the best epoch and minimum validation loss

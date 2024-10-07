@@ -26,7 +26,7 @@ def get_config():
         + "__unet_depth_" + str(config['unet_depth'])
         + "__augmentation_" + str(config['do_augmentation'])
         + "__activation_" + str(config['activation'])
-        + "__EWMA_val_loss_(test)"
+        + "__EWMA_val_loss_test"
     )
 
     # Define the full log directory path based on the experiment name

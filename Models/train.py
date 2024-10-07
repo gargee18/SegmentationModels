@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from sklearn.metrics import f1_score
 import Utils  # Assuming Utils contains custom utility functions
 
-def train_one_epoch(model, train_loader, optimizer, criterion, device, epoch, writer):
+def train_one_epoch(model, train_loader, optimizer, device, epoch, writer):
     model.train()
     running_loss = 0.0
     all_labels = []
@@ -39,7 +39,7 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device, epoch, wr
     
     return running_loss / len(train_loader), train_f1
 
-def validate_one_epoch(model, val_loader, criterion, device, epoch, writer, window_size, moving_avg_val_loss):
+def validate_one_epoch(model, val_loader, device, epoch, writer, window_size, moving_avg_val_loss):
     model.eval()
     val_loss = 0.0
     all_labels = []
@@ -70,4 +70,38 @@ def validate_one_epoch(model, val_loader, criterion, device, epoch, writer, wind
     writer.add_scalar('F1/val/necd', val_f1_necd, epoch)
     writer.add_scalar('Loss/val', moving_avg_val_loss, epoch)
     
+
     return val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_necd
+
+def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, writer, early_stopping, best_model_path, window_size=5):
+    best_val_loss = float('inf')
+    best_epoch = 0
+    moving_avg_val_loss = 0.0
+
+    for epoch in range(num_epochs):
+        # Train for one epoch
+        train_loss, train_f1 = train_one_epoch(model, train_loader, optimizer, device, epoch, writer)
+        
+        # Validate for one epoch
+        val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_necd = validate_one_epoch(model, val_loader, device, epoch, writer, window_size, moving_avg_val_loss)
+        
+        # Initialize moving average if it's the first epoch
+        if epoch == 0:
+            moving_avg_val_loss = val_loss  # Initialize with first validation loss
+        
+        print(f"[{epoch + 1}/{num_epochs}], Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Moving Avg Val Loss: {moving_avg_val_loss:.4f}, Train F1: {train_f1:.4f}, Val F1: {val_f1:.4f}, Val F1 HF: {val_f1_hf:.4f}, Val F1 NECD: {val_f1_necd:.4f}")
+        
+        # Early stopping check
+        early_stopping.check(moving_avg_val_loss)
+        if early_stopping.should_stop:
+            print(f"Early stopping at epoch {epoch}. Best validation loss: {early_stopping.best_val_loss:.4f}")
+            break
+
+        # Save best model based on validation moving average loss
+        if moving_avg_val_loss < best_val_loss:
+            best_val_loss = moving_avg_val_loss  # Update best validation moving average loss
+            best_epoch = epoch  # Update best epoch
+            torch.save(model.state_dict(), best_model_path)  # Save the model's state dict
+            print(f"New best model saved at epoch {epoch + 1} with train loss {train_loss:.4f}, val loss {val_loss:.4f}, moving avg val loss: {moving_avg_val_loss:.4f}")
+
+    print(f"Training complete. Best model found at epoch {best_epoch + 1} with val loss: {best_val_loss:.4f}")

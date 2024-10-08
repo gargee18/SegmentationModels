@@ -32,7 +32,7 @@ def main():
     window_size = 20
 
     #Initialize early stopping
-    early_stopping = EarlyStopping(patience=100, min_delta=0)
+    early_stopping = EarlyStopping(patience=1000, min_delta=0)
 
     #Train
     start_time = time.time()

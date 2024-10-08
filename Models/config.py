@@ -2,8 +2,8 @@ import os
 
 def get_config():
     config=  {
-        "learning_rate": 0.1,
-        "num_epochs": 100,
+        "learning_rate": 0.01,
+        "num_epochs": 10000,
         "batch_size": 16,
         "random_seed": 42,
         "optimizer_name": "SGD",

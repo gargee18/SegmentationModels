@@ -1,12 +1,13 @@
 from config import get_config
 from data_loader import get_dataloaders
 from model import setup_model_and_optimizer
-from train import train_one_epoch, validate_one_epoch, train_model
+from train import train_model
 import Utils
 from early_stopping import EarlyStopping
 from torch.utils.tensorboard import SummaryWriter
 import torch
 import os
+import time
 
 def main():
     #Get params
@@ -34,13 +35,17 @@ def main():
     early_stopping = EarlyStopping(patience=100, min_delta=0)
 
     #Train
+    start_time = time.time()
     train_model(model, train_loader, val_loader, optimizer, device, config['num_epochs'], writer, early_stopping, best_model_path, window_size)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Training completed in {elapsed_time:.2f} seconds.")
 
     #Write to tensorboardx
     writer.close()
     
     #Display 4 results from validation dataset
-    Utils.display_segmentation_with_overlay(model, device, val_loader, 4)
+    Utils.display_segmentation_with_overlay(model, device, val_loader, 3)
 
 if __name__ == "__main__":
     main()

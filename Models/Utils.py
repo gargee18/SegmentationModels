@@ -2,7 +2,9 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import torch
-from matplotlib.colors import ListedColormap, BoundaryNorm
+import cv2
+from skimage import measure
+from matplotlib.colors import BoundaryNorm
 #DEBUG : uncomment to test
 #test_class_weights_tensor=torch.tensor([1,1,1,1,1,1,1,1], dtype=torch.float32).to(device)
 
@@ -57,10 +59,10 @@ def display_segmentation_with_overlay(model, device, val_loader, nb_images_to_di
         ]
 
 
-    cmap = plt.get_cmap('viridis')
+    cmap = plt.get_cmap('tab10')
     bounds = np.arange(len(class_names) + 1)  # Boundaries between classes (0, 1, 2, ..., 8)
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
-
+    columns = 5
     nb_images_displayed = 0  # Keep track of how many images have been displayed
     with torch.no_grad():
         for images, masks in val_loader:
@@ -72,7 +74,7 @@ def display_segmentation_with_overlay(model, device, val_loader, nb_images_to_di
         images_to_display = min(batch_size, nb_images_to_display - nb_images_displayed)  # Number of images to display in this batch
 
         # Create a figure and axes for the images, 4 columns for each: original, actual mask, predicted mask, overlay
-        fig, axes = plt.subplots(images_to_display, 4, figsize=(20, images_to_display * 5))
+        fig, axes = plt.subplots(images_to_display, columns, figsize=(20, images_to_display * 5))
 
         # Ensure that axes is always 2D, even if there's only one row
         axes = np.atleast_2d(axes)
@@ -82,32 +84,59 @@ def display_segmentation_with_overlay(model, device, val_loader, nb_images_to_di
 
             # Convert the RGB image to grayscale (average of R, G, B channels)
             grayscale_img = np.mean(img, axis=-1)
-
+            grayscale_img_8bit = np.interp(grayscale_img, (grayscale_img.min(), grayscale_img.max()), (0, 255)).astype(np.uint8)
             actual_mask = masks[i].cpu().numpy().squeeze()  # Remove singleton dimensions
             predicted_mask = torch.argmax(y_pred, dim=1)[i].detach().cpu().numpy()  # Get the predicted mask
 
             # Display the original image (converted to grayscale)
-            axes[i, 0].imshow(grayscale_img, cmap='gray')
+            axes[i, 0].imshow(grayscale_img_8bit, cmap='gray')
             axes[i, 0].set_title(f"Original Grayscale Image {nb_images_displayed + i + 1}")
             axes[i, 0].axis('off')
 
-            # Display the actual segmentation mask
-            axes[i, 1].imshow(actual_mask, cmap=cmap, norm=norm)
-            axes[i, 1].set_title(f"Expected Mask {nb_images_displayed + i + 1}")
+            error = (actual_mask != predicted_mask).astype(int)
+            modified_grayscale_img = grayscale_img_8bit.copy()
+            modified_grayscale_img[error > 0] = 255  # Set non-zero locations to 255
+            axes[i, 1].imshow(modified_grayscale_img, cmap='gray')  # Display grayscale image
+            axes[i, 1].imshow(error, alpha=0.6,cmap='gray', vmin=0, vmax=0.1)  # Overlay colorful mask
+            axes[i, 1].set_title(f"Overlay {nb_images_displayed + i + 1}")
             axes[i, 1].axis('off')
 
-            # Display the predicted segmentation mask
-            axes[i, 2].imshow(predicted_mask, cmap=cmap, norm=norm)
-            axes[i, 2].set_title(f"Predicted Mask {nb_images_displayed + i + 1}")
+
+           # Display the actual segmentation mask
+            axes[i, 2].imshow(actual_mask, cmap=cmap, norm=norm)
+            axes[i, 2].set_title(f"Expected Mask {nb_images_displayed + i + 1}")
             axes[i, 2].axis('off')
 
-            # Overlay the predicted mask on the grayscale image with low opacity
-            axes[i, 3].imshow(grayscale_img, cmap='gray')  # Display grayscale image
-            axes[i, 3].imshow(predicted_mask, cmap=cmap, alpha=0.5,norm=norm )  # Overlay colorful mask
-            axes[i, 3].set_title(f"Overlay {nb_images_displayed + i + 1}")
+            # Display the predicted segmentation mask
+            axes[i, 3].imshow(predicted_mask, cmap=cmap, norm=norm)
+            axes[i, 3].set_title(f"Predicted Mask {nb_images_displayed + i + 1}")
             axes[i, 3].axis('off')
 
-            # plt.tight_layout()
+            # Overlay the predicted mask on the grayscale image with low opacity
+
+ 
+            # Difference of the actual and pedicted mask
+            axes[i, 4].imshow(error, cmap='gray', vmin=0, vmax=0.1)
+            axes[i, 4].set_title(f'Error Map {i + 1}')
+            axes[i, 4].axis('off')
+
+    #TODO: Apply contours to the overlay
+            # axes[i, 3].imshow(grayscale_img, cmap='gray', alpha=1)  # Display grayscale image
+            # overlay = axes[i, 3].imshow(predicted_mask, cmap=cmap, alpha=0.5, norm=norm)  # Overlay colorful mask
+            
+            # # Add contours to the predicted mask
+            # contours = measure.find_contours(predicted_mask, 0.5)  # Find contours at a fixed level
+            # for contour in contours:
+            #     axes[i, 3].plot(contour[:, 1], contour[:, 0], linewidth=2, color='red')  # Plot contours
+
+            # axes[i, 3].set_title(f"Overlay {nb_images_displayed + i + 1}")
+            plt.tight_layout()
+
+
+
+        
+
+
         plt.show() #This line generate a bug when run in ssh on phenodrone : 
 
 
@@ -243,3 +272,15 @@ def basic_output_display(model, device, val_loader, optimizer):
 
 
 
+def save_predictions(predictions, output_dir, image_names):
+    os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
+    for i, pred in enumerate(predictions):
+        np.save(os.path.join(output_dir, f"{image_names[i]}.npy"), pred)  # Save each prediction as .npy
+
+
+def load_predictions(output_dir, image_names):
+    predictions = []
+    for name in image_names:
+        pred = np.load(os.path.join(output_dir, f"{name}.npy"))  # Load each prediction
+        predictions.append(pred)
+    return predictions

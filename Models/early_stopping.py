@@ -2,7 +2,7 @@ import numpy as np
 
 # Early Stopping class
 class EarlyStopping:
-    def __init__(self, patience=5, min_delta=0):
+    def __init__(self, patience, min_delta):
         self.patience = patience
         self.min_delta = min_delta
         self.best_val_loss = np.inf

@@ -89,19 +89,24 @@ def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, 
         if epoch == 0:
             moving_avg_val_loss = val_loss  # Initialize with first validation loss
         
-        print(f"[{epoch + 1}/{num_epochs}], Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Moving Avg Val Loss: {moving_avg_val_loss:.4f}, Train F1: {train_f1:.4f}, Val F1: {val_f1:.4f}, Val F1 HF: {val_f1_hf:.4f}, Val F1 NECD: {val_f1_necd:.4f}")
+        print(f"[{epoch + 1}/{num_epochs}], TR Loss: {train_loss:.4f}, VAL Loss: {val_loss:.4f}, MAVL: {moving_avg_val_loss:.4f}, TR F1: {train_f1:.4f}, VAL F1: {val_f1:.4f}, Val F1 HF: {val_f1_hf:.4f}, Val F1 NECD: {val_f1_necd:.4f}")
         
         # Early stopping check
-        early_stopping.check(moving_avg_val_loss)
+        early_stopping.check(val_loss)
         if early_stopping.should_stop:
-            print(f"Early stopping at epoch {epoch}. Best validation loss: {early_stopping.best_val_loss:.4f}")
+            print(f"Early stopping at epoch {epoch+1}; TR Loss {train_loss:.4f}, VAL Loss {val_loss:.4f}, MAVL: {moving_avg_val_loss:.4f}, TR F1: {train_f1:.4f}, VAL F1: {val_f1:.4f}") #Best validation loss: {early_stopping.best_val_loss:.4f}")
             break
 
         # Save best model based on validation moving average loss
-        if moving_avg_val_loss < best_val_loss:
-            best_val_loss = moving_avg_val_loss  # Update best validation moving average loss
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss  # Update best validation moving average loss
             best_epoch = epoch  # Update best epoch
+            corresponding_train_loss = train_loss
+            corresponding_train_F1 = train_f1
+            best_val_F1 = val_f1
+            corresponding_MAVL = moving_avg_val_loss
             torch.save(model.state_dict(), best_model_path)  # Save the model's state dict
-            print(f"New best model saved at epoch {epoch + 1} with train loss {train_loss:.4f}, val loss {val_loss:.4f}, moving avg val loss: {moving_avg_val_loss:.4f}")
-
-    print(f"Training complete. Best model found at epoch {best_epoch + 1} with val loss: {best_val_loss:.4f}")
+            print(f"New best model saved at epoch {epoch + 1} with TR loss {train_loss:.4f}, VAL loss {val_loss:.4f}, MAVL: {moving_avg_val_loss:.4f}, TR F1: {train_f1:.4f}, VAL F1: {val_f1:.4f}")
+    print('-' * 150 )
+    print(f"Training complete. Best model at epoch {best_epoch + 1} with TR loss {corresponding_train_loss:.4f}, val loss: {best_val_loss:.4f}, MAVL: {corresponding_MAVL:.4f}, TR F1: {corresponding_train_F1:.4f}, VAL F1: {best_val_F1:.4f}")
+    print('-' * 150 )

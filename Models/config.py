@@ -2,8 +2,8 @@ import os
 
 def get_config():
     config=  {
-        "learning_rate": 0.01,
-        "num_epochs": 10000,
+        "learning_rate": 0.1,
+        "num_epochs": 100,
         "batch_size": 16,
         "random_seed": 42,
         "optimizer_name": "SGD",
@@ -13,7 +13,17 @@ def get_config():
         "log_base_dir": '/home/phukon/Desktop/Model_Fitting/runs/',
         "image_dir": '/home/phukon/Desktop/Model_Fitting/weka_dataset/images/train_set/',
         "mask_path": '/home/phukon/Desktop/Model_Fitting/weka_dataset/masks/',
-        "model_dir": '/home/phukon/Desktop/Model_Fitting/models/'
+        "model_dir": '/home/phukon/Desktop/Model_Fitting/models/',
+        "class_names": [
+            "Healthy Functional",    # 0
+            "Healthy Nonfunctional", # 1
+            "Necrotic Infected",     # 2
+            "Necrotic Dry",          # 3
+            "White Rot",             # 4
+            "Bark",                  # 5
+            "Pith",                  # 6
+            "Background",            # 7
+        ]
     }
 
 # Generate experiment name based on configuration

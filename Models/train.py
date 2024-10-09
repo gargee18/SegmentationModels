@@ -1,9 +1,10 @@
 import torch
+import numpy as np
 import torch.nn.functional as F
 from sklearn.metrics import f1_score
-import Utils  # Assuming Utils contains custom utility functions
-
-def train_one_epoch(model, train_loader, optimizer, device, epoch, writer):
+import Utils # Assuming Utils contains custom utility functions
+from confusion_matrix import ConfusionMatrix
+def train(model, train_loader, optimizer, device, epoch, writer):
     model.train()
     running_loss = 0.0
     all_labels = []
@@ -39,12 +40,14 @@ def train_one_epoch(model, train_loader, optimizer, device, epoch, writer):
     
     return running_loss / len(train_loader), train_f1
 
-def validate_one_epoch(model, val_loader, device, epoch, writer, window_size, moving_avg_val_loss):
+def validate(model, val_loader, device, epoch, writer, window_size, moving_avg_val_loss):
     model.eval()
     val_loss = 0.0
     all_labels = []
     all_preds = []
-    
+    mask_true=[]
+    mask_pred=[]
+
     with torch.no_grad():
         for images, masks in val_loader:
             images = images.permute(0, 1, 2, 3).to(device)
@@ -58,7 +61,9 @@ def validate_one_epoch(model, val_loader, device, epoch, writer, window_size, mo
             val_loss += loss.item()
             
             all_labels = masks.flatten().cpu().numpy()
+            mask_true.extend(all_labels)
             all_preds = torch.argmax(y_pred, dim=1).flatten().cpu().numpy()
+            mask_pred.extend(all_preds)
     
     val_loss /= len(val_loader)
     moving_avg_val_loss = ((window_size - 1) / window_size) * moving_avg_val_loss + (1 / window_size) * val_loss
@@ -69,9 +74,8 @@ def validate_one_epoch(model, val_loader, device, epoch, writer, window_size, mo
     writer.add_scalar('F1/val/hf', val_f1_hf, epoch)
     writer.add_scalar('F1/val/necd', val_f1_necd, epoch)
     writer.add_scalar('Loss/val', moving_avg_val_loss, epoch)
-    
 
-    return val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_necd
+    return val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_necd, mask_true, mask_pred
 
 def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, writer, early_stopping, best_model_path, window_size=5):
     best_val_loss = float('inf')
@@ -80,10 +84,10 @@ def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, 
 
     for epoch in range(num_epochs):
         # Train for one epoch
-        train_loss, train_f1 = train_one_epoch(model, train_loader, optimizer, device, epoch, writer)
+        train_loss, train_f1 = train(model, train_loader, optimizer, device, epoch, writer)
         
         # Validate for one epoch
-        val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_necd = validate_one_epoch(model, val_loader, device, epoch, writer, window_size, moving_avg_val_loss)
+        val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_necd, mask_true, mask_pred = validate(model, val_loader, device, epoch, writer, window_size, moving_avg_val_loss)
         
         # Initialize moving average if it's the first epoch
         if epoch == 0:
@@ -107,6 +111,8 @@ def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, 
             corresponding_MAVL = moving_avg_val_loss
             torch.save(model.state_dict(), best_model_path)  # Save the model's state dict
             print(f"New best model saved at epoch {epoch + 1} with TR loss {train_loss:.4f}, VAL loss {val_loss:.4f}, MAVL: {moving_avg_val_loss:.4f}, TR F1: {train_f1:.4f}, VAL F1: {val_f1:.4f}")
-    print('-' * 150 )
+    print('-' * 130 )
     print(f"Training complete. Best model at epoch {best_epoch + 1} with TR loss {corresponding_train_loss:.4f}, val loss: {best_val_loss:.4f}, MAVL: {corresponding_MAVL:.4f}, TR F1: {corresponding_train_F1:.4f}, VAL F1: {best_val_F1:.4f}")
-    print('-' * 150 )
+    print('-' * 130 )
+
+    ConfusionMatrix(mask_true, mask_pred)

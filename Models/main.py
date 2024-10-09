@@ -32,7 +32,7 @@ def main():
     window_size = 20
 
     #Initialize early stopping
-    early_stopping = EarlyStopping(patience=1000, min_delta=0)
+    early_stopping = EarlyStopping(patience=100, min_delta=0)
 
     #Train
     start_time = time.time()
@@ -45,7 +45,7 @@ def main():
     writer.close()
     
     #Display 4 results from validation dataset
-    Utils.display_segmentation_with_overlay(model, device, val_loader, 3)
+    Utils.display_segmentation_with_contours(model, device, val_loader, 3, config['class_names'])
 
 if __name__ == "__main__":
     main()

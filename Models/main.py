@@ -46,6 +46,8 @@ def main():
     
     #Display 4 results from validation dataset
     Utils.display_segmentation_with_contours(model, device, val_loader, 3, config['class_names'])
+    Utils.display_segmentation_with_errormap(model, device, val_loader, 3, config['class_names'])
+    Utils.display_segmentation_with_nice_overlay(model, device, val_loader, 3, config['class_names'])
 
 if __name__ == "__main__":
     main()

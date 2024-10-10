@@ -6,6 +6,7 @@ import cv2
 from skimage import measure
 from matplotlib.colors import BoundaryNorm
 from matplotlib import cm
+from config import get_config
 #DEBUG : uncomment to test
 #test_class_weights_tensor=torch.tensor([1,1,1,1,1,1,1,1], dtype=torch.float32).to(device)
 
@@ -54,6 +55,7 @@ def display_segmentation_with_errormap(model, device, val_loader, nb_images_to_d
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
     columns = 5
     nb_images_displayed = 0  # Keep track of how many images have been displayed
+    config = get_config()
     with torch.no_grad():
         for images, masks in val_loader:
             images = images.permute(0, 1, 2, 3).to(device)  # Permute to (B, C, H, W)
@@ -109,10 +111,12 @@ def display_segmentation_with_errormap(model, device, val_loader, nb_images_to_d
             axes[i, 4].axis('off')
             plt.tight_layout()
 
+            nb_images_displayed += images_to_display
+        plt.savefig(f'/home/phukon/Desktop/Model_Fitting/predicted_masks/{config['exp_name']}_with_ERRORMAP_{nb_images_displayed + i + 1}.png', bbox_inches='tight')
         plt.show() #This line generate a bug when run in ssh on phenodrone : 
+       
 
-
-        nb_images_displayed += images_to_display  # Update the count of displayed images
+        # nb_images_displayed += images_to_display  # Update the count of displayed images
 
         # if images_displayed >= num_images_to_display:
         #     break  # Stop if we have displayed the requested number of images
@@ -127,7 +131,7 @@ def display_segmentation_with_contours(model, device, val_loader, nb_images_to_d
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
     columns = 5
     nb_images_displayed = 0  # Keep track of how many images have been displayed
-
+    config = get_config()
     # Define RGB colors for each label (8 classes)
     RGBforLabel = {
         0: (255, 0, 0),    # Class 0 - Red
@@ -210,9 +214,10 @@ def display_segmentation_with_contours(model, device, val_loader, nb_images_to_d
 
             plt.tight_layout()
             nb_images_displayed += images_to_display
-
+            
+        plt.savefig(f'/home/phukon/Desktop/Model_Fitting/predicted_masks/{config['exp_name']}_with_CONTOURS_{nb_images_displayed + i + 1}.png', bbox_inches='tight')
         plt.show() #This line generate a bug when run in ssh on phenodrone : 
-
+       
 
          # Update the count of displayed images
 
@@ -344,7 +349,7 @@ def display_segmentation_with_nice_overlay(model, device, val_loader, nb_images_
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
     columns = 4
     nb_images_displayed = 0  # Keep track of how many images have been displayed
-
+    config = get_config()
     with torch.no_grad():
         for images, masks in val_loader:
             images = images.permute(0, 1, 2, 3).to(device)  # Permute to (B, C, H, W)
@@ -406,8 +411,10 @@ def display_segmentation_with_nice_overlay(model, device, val_loader, nb_images_
 
                 plt.tight_layout()
                 nb_images_displayed += images_to_display
-
+                
+            plt.savefig(f'/home/phukon/Desktop/Model_Fitting/predicted_masks/{config['exp_name']}_with_OVERLAY_{nb_images_displayed + i + 1}.png', bbox_inches='tight')
             plt.show()
+          
 
 def save_predictions(predictions, output_dir, image_names):
     os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist

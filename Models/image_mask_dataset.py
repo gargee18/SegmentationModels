@@ -58,11 +58,6 @@ class ImageMaskDataset(Dataset):
             image = self.transform_xray(image)#Image.fromarray(image)
             torch.manual_seed(self.seed)     # Ensure the same transformations
             mask = self.transform_mask(mask)#Image.fromarray(mask) 
-      
-        
-
-
-
         return image, mask
 
 

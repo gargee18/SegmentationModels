@@ -16,3 +16,5 @@ def ConfusionMatrix(mask_true,mask_pred):
     plt.title('Normalized Confusion Matrix')
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
+    plt.savefig(f'/home/phukon/Desktop/Model_Fitting/confusion_mats/{config['exp_name']}_Normalized_Confusion_Matrix_Heatmap.png', bbox_inches='tight')
+    plt.show()

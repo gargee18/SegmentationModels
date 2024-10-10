@@ -116,3 +116,4 @@ def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, 
     print('-' * 130 )
 
     ConfusionMatrix(mask_true, mask_pred)
+    

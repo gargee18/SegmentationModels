@@ -3,7 +3,7 @@ import os
 def get_config():
     config=  {
         "learning_rate": 0.1,
-        "num_epochs": 100,
+        "num_epochs": 10,
         "batch_size": 16,
         "random_seed": 42,
         "optimizer_name": "SGD",
@@ -25,8 +25,11 @@ def get_config():
             "Background",            # 7
         ]
     }
+    generate_exp_name(config)  # Automatically generate the experiment name on config creation
+    return config
 
-# Generate experiment name based on configuration
+# Function to generate the experiment name
+def generate_exp_name(config):
     exp_name = (
         config['optimizer_name']
         + "_bs_" + str(config['batch_size'])
@@ -42,5 +45,3 @@ def get_config():
     # Define the full log directory path based on the experiment name
     config['exp_name'] = exp_name
     config['log_dir'] = os.path.join(config['log_base_dir'], "training_custom_unet_with_skip_connections_" + exp_name)
-
-    return config

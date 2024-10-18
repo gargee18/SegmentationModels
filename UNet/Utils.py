@@ -52,7 +52,7 @@ def get_weights(masks, device, num_classes):
 
 def display_segmentation_with_errormap( images, true_labels, pred_labels, nb_images_to_display, class_names):
 
-    cmap = plt.get_cmap('tab10')
+    cmap = plt.get_cmap('viridis')
     bounds = np.arange(len(class_names) + 1)  # Boundaries between classes (0, 1, 2, ..., 8)
     norm = BoundaryNorm(bounds, cmap.N)  # Ensures fixed color per class index
     columns = 5

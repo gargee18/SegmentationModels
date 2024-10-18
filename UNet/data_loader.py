@@ -18,7 +18,7 @@ def get_dataloaders(config):
     train_dataset = Subset(dataset, train_indices)
     val_dataset = Subset(dataset, val_indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=False)#, num_workers=4, prefetch_factor=2)
+    train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True)#, num_workers=4, prefetch_factor=2)
     val_loader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=False)#, num_workers=4, prefetch_factor=2)
 
     return train_loader, val_loader

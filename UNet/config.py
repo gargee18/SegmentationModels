@@ -2,14 +2,15 @@ import os
 import argparse
 def get_config(args=None):
     config=  {
-        "learning_rate": 0.05,
-        "num_epochs": 500,
+        "learning_rate": 0.001,
+        "num_epochs": 10000,
         "batch_size": 16,
         "random_seed": 42,
         "optimizer_name": "SGD",
         "do_augmentation": True,
         "activation": "ReLU",
-        "unet_depth": "3",
+        "unet_depth": "4",
+        "in_ch": 1,
         "num_classes" : 8,
         "log_base_dir": '/home/phukon/Desktop/Model_Fitting/runs/',
         "image_dir": '/home/phukon/Desktop/Model_Fitting/weka_dataset/images/train_set/',
@@ -57,7 +58,7 @@ def generate_exp_name(config):
         + "__unet_depth_" + str(config['unet_depth'])
         + "__augmentation_" + str(config['do_augmentation'])
         + "__activation_" + str(config['activation'])
-        + "__EWMA_val_loss"
+        # + "__EWMA_val_loss"
     )
 
     # Define the full log directory path based on the experiment name

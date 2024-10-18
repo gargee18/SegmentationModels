@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 from config import get_config
 from sklearn.metrics import f1_score
-import Utils # Assuming Utils contains custom utility functions
+import Utils 
 
 def train(model, train_loader, optimizer, device, epoch, writer):
     model.train()
@@ -18,13 +18,13 @@ def train(model, train_loader, optimizer, device, epoch, writer):
         masks = masks.squeeze().to(device)
 
         optimizer.zero_grad()
-        y_pred = model(images)#B1
+        y_pred = model(images)
         
         masks_int = masks.long()
         train_class_weights_tensor = torch.tensor(Utils.get_weights(masks, device, int(config['num_classes'])), dtype=torch.float32).to(device)
         
-        loss = F.cross_entropy(y_pred, masks_int, weight=train_class_weights_tensor, ignore_index=8)#B2
-        loss.backward()#B3
+        loss = F.cross_entropy(y_pred, masks_int, weight=train_class_weights_tensor, ignore_index=8)
+        loss.backward()
         optimizer.step()
         
         running_loss += loss.item()
@@ -129,6 +129,6 @@ def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, 
     print('-' * 130 )
     print(f"Training complete. Best model at epoch {best_epoch + 1} with TR Loss {corresponding_train_loss:.4f} Val Loss: {best_val_loss:.4f} MAVL: {corresponding_MAVL:.4f} TRF1: {corresponding_train_F1:.4f} VALF1: {best_val_F1:.4f}")
     print('-' * 130 )
-    return mask_true, mask_pred, images
-   
+    return 
+
 

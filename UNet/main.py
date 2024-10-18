@@ -42,7 +42,7 @@ def main():
     log_dir = config['log_dir']
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir) 
-    best_model_path = os.path.join(config['model_dir'], config['exp_name']+ "_best_model.pth")
+    best_model_path = os.path.join(config['model_dir'], config['exp_name']+ "__best_model.pth")
 
     #Set window size
     window_size = 20
@@ -82,22 +82,3 @@ if __name__ == "__main__":
     res.strip_dirs().sort_stats('cumulative')
     res.print_stats()
     res.dump_stats('/home/phukon/Desktop/Model_Fitting/stats/results.prof')
-
-# if __name__ == "__main__":
-#     profile_output = io.StringIO()
-
-#     # Start profiling
-#     profiler = cProfile.Profile()
-#     profiler.enable()
-    
-#     main()
-    
-#     profiler.disable()
-
-#     # Analyze the results using pstats
-#     stats = pstats.Stats(profiler, stream=profile_output)
-#     stats.strip_dirs().sort_stats('cumulative')  # Sort by cumulative time
-
-#     # Print the first 100 lines of profiling results
-#     stats.print_stats(500)  # Display only the top 100 lines
-#     print(profile_output.getvalue()) 

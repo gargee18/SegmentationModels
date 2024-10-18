@@ -5,6 +5,7 @@ import torch
 import torchvision.transforms as transforms
 import numpy as np
 import time
+from torchvision.transforms import InterpolationMode
 class ImageMaskDataset(Dataset):
     def __init__(self, image_dir, mask_dir, augment=False):
         self.seed = torch.random.seed() 
@@ -12,13 +13,13 @@ class ImageMaskDataset(Dataset):
         if self.augment:
             self.transform_xray = transforms.Compose([
                 transforms.RandomHorizontalFlip(),
-                transforms.RandomPerspective(0.5, fill=40), # degree of distortion
+                transforms.RandomPerspective(distortion_scale=0.5, p=0.5, interpolation = InterpolationMode.NEAREST, fill=40), # degree of distortion
                 transforms.RandomRotation([0,360], fill=40),
                 # transforms.ToTensor()
             ])
             self.transform_mask = transforms.Compose([
                 transforms.RandomHorizontalFlip(),
-                transforms.RandomPerspective(0.5, fill=7), # degree of distortion
+                transforms.RandomPerspective(distortion_scale=0.5, p=0.5, interpolation = InterpolationMode.NEAREST, fill=7), # degree of distortion
                 transforms.RandomRotation([0,360], fill=7),
                 # transforms.ToTensor()
             ])

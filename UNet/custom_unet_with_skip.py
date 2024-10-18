@@ -67,11 +67,11 @@ class CustomUnetWithSkip(nn.Module):
         self.encoder_block_1 = Encoder(in_ch, 64)
         self.encoder_block_2 = Encoder(64, 128)
         self.encoder_block_3 = Encoder(128, 256)
-        # self.encoder_block_4 = Encoder(256, 256)
+        self.encoder_block_4 = Encoder(256, 256)
 
         self.bottle_neck = ConvReLU(256,256)
 
-        # self.decoder_block_0 = Decoder(256, 256)
+        self.decoder_block_0 = Decoder(256, 256)
         self.decoder_block_1 = Decoder(256, 128)
         self.decoder_block_2 = Decoder(128, 64)
         self.decoder_block_3 = Decoder(64, 32)
@@ -83,14 +83,14 @@ class CustomUnetWithSkip(nn.Module):
         e1, ind1 = self.encoder_block_1(x) 
         e2, ind2 = self.encoder_block_2(e1) 
         e3, ind3 = self.encoder_block_3(e2)
-        # e4, ind4 = self.encoder_block_4(e3)
+        e4, ind4 = self.encoder_block_4(e3)
 
         # bottleneck
-        b1 = self.bottle_neck(e3)
+        b1 = self.bottle_neck(e4)
 
         # decoder
-        # d0 = self.decoder_block_0(b1, ind4)
-        d1 = self.decoder_block_1(b1, ind3)
+        d0 = self.decoder_block_0(b1, ind4)
+        d1 = self.decoder_block_1(d0, ind3)
         d2 = self.decoder_block_2(d1, ind2)
         d3 = self.decoder_block_3(d2, ind1)
 

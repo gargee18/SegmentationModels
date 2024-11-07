@@ -1,0 +1,7 @@
+README.md
+setup.py
+SegmentationModels.egg-info/PKG-INFO
+SegmentationModels.egg-info/SOURCES.txt
+SegmentationModels.egg-info/dependency_links.txt
+SegmentationModels.egg-info/requires.txt
+SegmentationModels.egg-info/top_level.txt

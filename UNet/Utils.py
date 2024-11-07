@@ -6,6 +6,8 @@ import cv2
 from skimage import measure
 from matplotlib.colors import BoundaryNorm
 from matplotlib import cm
+from PIL import Image
+
 from config import get_config
 #DEBUG : uncomment to test
 #test_class_weights_tensor=torch.tensor([1,1,1,1,1,1,1,1], dtype=torch.float32).to(device)
@@ -78,7 +80,7 @@ def display_segmentation_with_errormap( images, true_labels, pred_labels, nb_ima
         # Reshape true and predicted masks from lists back to 2D images
         actual_mask = np.array(true_labels[i * (image_height * image_width): (i + 1) * (image_height * image_width)]).reshape(image_height, image_width)
         predicted_mask = np.array(pred_labels[i * (image_height * image_width): (i + 1) * (image_height * image_width)]).reshape(image_height, image_width)
-
+       
         # Display the original image (converted to grayscale)
         axes[i, 0].imshow(grayscale_img_8bit, cmap='gray')
         axes[i, 0].set_title(f"Original Grayscale Image {nb_images_displayed + i + 1}")
@@ -88,8 +90,8 @@ def display_segmentation_with_errormap( images, true_labels, pred_labels, nb_ima
         error = (actual_mask != predicted_mask).astype(int)
         modified_grayscale_img = grayscale_img_8bit.copy()
         modified_grayscale_img[error > 0] = 255  # Set non-zero locations to 255
-        axes[i, 1].imshow(modified_grayscale_img, cmap='gray')  # Display grayscale image
-        axes[i, 1].imshow(error, alpha=0.6,cmap='gray', vmin=0, vmax=0.1)  # Overlay colorful mask
+        axes[i, 1].imshow(modified_grayscale_img, alpha=1, cmap='gray')  # Display grayscale image
+        axes[i, 1].imshow(error, alpha=0.5,cmap='Reds', vmin=0, vmax=0.1)  # Overlay colorful mask
         axes[i, 1].set_title(f"Overlay {nb_images_displayed + i + 1}")
         axes[i, 1].axis('off')
 
@@ -393,3 +395,46 @@ def load_predictions(output_dir, image_names):
         pred = np.load(os.path.join(output_dir, f"{name}.npy"))  # Load each prediction
         predictions.append(pred)
     return predictions
+
+
+def compute_class_statistics(images, mask_pred, class_1=2, class_2=3):
+    class_1_pixels = []
+    class_2_pixels = []
+    
+    # Iterate through each predicted mask
+    for i in range(len(images)):
+        image = images[i].cpu().numpy().transpose(1, 2, 0)  # Convert tensor to numpy and channel-last
+        mask = mask_pred[i].cpu().numpy()  # Convert mask to numpy array
+
+        # Extract pixel values where the prediction is class_1 (Degradation Level 1)
+        class_1_pixels.extend(image[mask == class_1].flatten())  # Flatten to 1D array
+        
+        # Extract pixel values where the prediction is class_2 (Degradation Level 2)
+        class_2_pixels.extend(image[mask == class_2].flatten())  # Flatten to 1D array
+    
+    # Convert pixel lists to numpy arrays for easier processing
+    class_1_pixels = np.array(class_1_pixels)
+    class_2_pixels = np.array(class_2_pixels)
+    
+    # Calculate statistics for Degradation Level 1 (class_1)
+    class_1_mean = np.mean(class_1_pixels) if len(class_1_pixels) > 0 else 0
+    class_1_variance = np.var(class_1_pixels) if len(class_1_pixels) > 0 else 0
+    
+    # Calculate statistics for Degradation Level 2 (class_2)
+    class_2_mean = np.mean(class_2_pixels) if len(class_2_pixels) > 0 else 0
+    class_2_variance = np.var(class_2_pixels) if len(class_2_pixels) > 0 else 0
+    
+    # Compile stats into a dictionary
+    stats_dict = {
+        'class_1': {
+            'mean': class_1_mean,
+            'variance': class_1_variance
+        },
+        'class_2': {
+            'mean': class_2_mean,
+            'variance': class_2_variance
+        }
+    }
+    
+    return stats_dict
+# Example usage

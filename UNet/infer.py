@@ -9,6 +9,7 @@ from image_mask_dataset import ImageMaskDataset
 from torch.utils.data import DataLoader
 from data_loader import get_dataloaders
 import Utils
+from confusion_matrix import ConfusionMatrix
 
 #Load configuration 
 config = get_config() 
@@ -86,6 +87,6 @@ if __name__ == "__main__":
     # Print the names of the images being displayed
     # for idx in images_to_display:
     #     print("Displaying image:", image_filenames[idx])
- 
-    Utils.display_segmentation_with_errormap(sample_images, true_masks, predicted_masks, 4, config['class_names'])
+    ConfusionMatrix(true_masks,predicted_masks,config)
+    Utils.display_segmentation_with_errormap(sample_images, true_masks, predicted_masks, 2, config['class_names'])
 

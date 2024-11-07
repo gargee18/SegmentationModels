@@ -19,8 +19,8 @@ def get_config(args=None):
         "class_names": [
             "Healthy Functional",    # 0
             "Healthy Nonfunctional", # 1
-            "Necrotic Infected",     # 2
-            "Necrotic Dry",          # 3
+            "Degradation Level 1",   # 2
+            "Degradation Level 2",   # 3
             "White Rot",             # 4
             "Bark",                  # 5
             "Pith",                  # 6
@@ -59,6 +59,7 @@ def generate_exp_name(config):
         + "__augmentation_" + str(config['do_augmentation'])
         + "__activation_" + str(config['activation'])
         # + "__EWMA_val_loss"
+        # + "recompute_best_model_for_testing"
     )
 
     # Define the full log directory path based on the experiment name

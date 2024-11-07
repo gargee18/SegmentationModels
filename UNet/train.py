@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from config import get_config
 from sklearn.metrics import f1_score
 import Utils 
+from confusion_matrix import ConfusionMatrix
 
 def train(model, train_loader, optimizer, device, epoch, writer):
     model.train()
@@ -23,7 +24,7 @@ def train(model, train_loader, optimizer, device, epoch, writer):
         masks_int = masks.long()
         train_class_weights_tensor = torch.tensor(Utils.get_weights(masks, device, int(config['num_classes'])), dtype=torch.float32).to(device)
         
-        loss = F.cross_entropy(y_pred, masks_int, weight=train_class_weights_tensor, ignore_index=8)
+        loss = F.cross_entropy(y_pred, masks_int, weight=train_class_weights_tensor, ignore_index=7)
         loss.backward()
         optimizer.step()
         
@@ -91,7 +92,6 @@ def validate(model, val_loader, device, epoch, writer, window_size, moving_avg_v
 
     return val_loss, val_f1, moving_avg_val_loss, val_f1_hf, val_f1_hnf, val_f1_neci, val_f1_necd, val_f1_wr, val_f1_pit,  mask_true, mask_pred, images
 def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, writer, early_stopping, best_model_path, window_size=5):
-   
     best_val_loss = float('inf')
     best_epoch = 0
     moving_avg_val_loss = 0.0
@@ -129,6 +129,24 @@ def train_model(model, train_loader, val_loader, optimizer, device, num_epochs, 
     print('-' * 130 )
     print(f"Training complete. Best model at epoch {best_epoch + 1} with TR Loss {corresponding_train_loss:.4f} Val Loss: {best_val_loss:.4f} MAVL: {corresponding_MAVL:.4f} TRF1: {corresponding_train_F1:.4f} VALF1: {best_val_F1:.4f}")
     print('-' * 130 )
+    ConfusionMatrix(mask_true, mask_pred, get_config())
+    Utils.display_segmentation_with_errormap(images, mask_true, mask_pred, 3, get_config()['class_names'])
+
+
+    stats = Utils.compute_class_statistics(images, mask_pred, class_1=2, class_2=3)
+
+    print("Statistics for Degradation Level 1 (class 2):")
+    print(f"Pixel Count: {stats['class_1']['pixel_count']}")
+    print(f"Mean: {stats['class_1']['mean']}")
+    print(f"Variance: {stats['class_1']['variance']}")
+    print()
+    print("Statistics for Degradation Level 2 (class 3):")
+    print(f"Pixel Count: {stats['class_2']['pixel_count']}")
+    print(f"Mean: {stats['class_2']['mean']}")
+    print(f"Variance: {stats['class_2']['variance']}")
+
+
+
     return 
 
 
